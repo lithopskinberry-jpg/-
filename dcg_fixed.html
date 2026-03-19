@@ -1285,6 +1285,7 @@
 
   <div class="target-prompt" id="target-prompt">
     <p id="target-prompt-text">対象を選択してください</p>
+    <button id="btn-confirm-multi" style="display:none;margin-right:0.5rem;padding:0.4rem 1rem;background:var(--accent);border:1px solid var(--accent);border-radius:5px;color:#fff;cursor:pointer;font-size:0.8rem;">決定</button>
     <button class="btn-cancel" id="btn-cancel-target">キャンセル</button>
   </div>
 
@@ -1502,13 +1503,14 @@ const ALL_CARDS = [
   {id:'c79', cost:5, name:'魔力の源泉', type:'陣地', atk:0, hp:0, keyword:'', trigger:'', effect:'場にある限り、互いの手札のカードコストを半分（切り上げ）にする', aiRole:''},
   {id:'c80', cost:6, name:'アヌビスの天秤', type:'スペル', atk:0, hp:0, keyword:'', trigger:'', effect:'敵ユニット一体に1点ダメージを与え、その後そのユニットを破壊する', aiRole:''},
   {id:'c81', cost:7, name:'メイルシュトローム', type:'スペル', atk:0, hp:0, keyword:'', trigger:'', effect:'敵ユニットに2点×4回ダメージ。倒すたびに次のユニットへ移る', aiRole:'boardClear'},
-  {id:'c82', cost:4, name:'ウィリー・ウィンキー', type:'ユニット', atk:3, hp:3, keyword:'', trigger:'登場時', effect:'敵ユニット一体を睡眠にする', aiRole:''},
+  {id:'c82', cost:5, name:'ウィリー・ウィンキー', type:'ユニット', atk:4, hp:4, keyword:'', trigger:'登場時', effect:'敵ユニット2体を睡眠にする', aiRole:''},
   {id:'c83', cost:4, name:'マンドラゴラ農園', type:'陣地', atk:0, hp:0, keyword:'', trigger:'自ターン終了時', effect:'敵ユニット一体に睡眠を付与する', aiRole:''},
   {id:'c84', cost:4, name:'オートマタ', type:'ユニット', atk:2, hp:5, keyword:'', trigger:'相手スペル・陣地使用時', effect:'相手がスペルまたは陣地を使用するたびに、相手プレイヤーに1点ダメージ', aiRole:''},
   {id:'c85', cost:7, name:'魔女の工房', type:'陣地', atk:0, hp:0, keyword:'至高', trigger:'自ターン開始時', effect:'手札のコストが最も高いカードのコストを2下げる', aiRole:''},
   {id:'c86', cost:8, name:'ハルマゲドン', type:'スペル', atk:0, hp:0, keyword:'', trigger:'', effect:'全ての場のユニットと陣地を破壊する', aiRole:'boardClear'},
   {id:'c87', cost:2, name:'オドの還元', type:'スペル', atk:0, hp:0, keyword:'至高', trigger:'', effect:'あなたの最大マナを1増やす', aiRole:''},
-  {id:'c88', cost:10, name:'エリザベート', type:'ユニット', atk:5, hp:5, keyword:'', trigger:'登場時', effect:'相手に5点ダメージ。あなたを5点回復', aiRole:'removal'},];
+  {id:'c88', cost:10, name:'エリザベート', type:'ユニット', atk:5, hp:5, keyword:'', trigger:'登場時', effect:'相手に5点ダメージ。あなたを5点回復', aiRole:'removal'},
+  {id:'c89', cost:3, name:'マンドラゴラ', type:'ユニット', atk:2, hp:1, keyword:'', trigger:'登場時', effect:'敵ユニット一体を睡眠にする', aiRole:''},];
 
 const SIGIL_LIST = [
   {id:'burn', name:'焦熱', icon:'🔥', cost:2, desc:'相手または敵ユニット一体に1点ダメージ'},
@@ -1834,8 +1836,9 @@ function startGame() {
     },
 
     selectedCard: null,   // {source:'hand'|'field', idx}
-    phase: 'main',        // main | targeting | hero-targeting
+    phase: 'main',        // main | targeting | hero-targeting | multi-targeting
     targetingMode: null,  // {type, card, source, idx}
+    multiTargetStore: null, // {card, handIdx, needed, selected:[]} 複数ターゲット選択用
     gameOver: false,
     aiThinking: false,
     discardMode: false,
@@ -2271,10 +2274,27 @@ function showCardConfirm(handIdx) {
     if ((card.type === 'ユニット' || card.type === '陣地') && G.player.field.length >= 5) return;
     bar.classList.remove('active');
     if (needsTarget(card)) {
-      G.phase = 'targeting';
-      G.targetingMode = {card, handIdx};
-      updateTargetPrompt(card);
-      renderAll();
+      // c82(ウィリー・ウィンキー)：複数ターゲット選択モード
+      if (card.id === 'c82') {
+        const enemyUnits = G.enemy.field.filter(c => c.type === 'ユニット');
+        if (enemyUnits.length === 1) {
+          // 敵ユニットが1体だけなら即実行
+          executePlayCard(G.player, handIdx, null);
+        } else {
+          G.phase = 'multi-targeting';
+          G.multiTargetStore = {card, handIdx, needed: 2, selected: []};
+          updateTargetPrompt(card);
+          document.getElementById('target-prompt-text').textContent = '敵ユニットを最大2体選択（ウィリー・ウィンキー）';
+          document.getElementById('btn-confirm-multi').style.display = 'inline-block';
+          document.getElementById('btn-confirm-multi').onclick = () => confirmMultiTarget();
+          renderAll();
+        }
+      } else {
+        G.phase = 'targeting';
+        G.targetingMode = {card, handIdx};
+        updateTargetPrompt(card);
+        renderAll();
+      }
     } else {
       executePlayCard(G.player, handIdx, null);
     }
@@ -2287,9 +2307,24 @@ function showCardConfirm(handIdx) {
 function cancelCardSelection() {
   G.selectedCard = null;
   G.phase = 'main';
+  G.multiTargetStore = null;
+  document.getElementById('btn-confirm-multi').style.display = 'none';
   document.getElementById('card-confirm-bar').classList.remove('active');
+  document.getElementById('target-prompt').classList.remove('active');
   showCardDetail(null);
   renderAll();
+}
+
+// 複数ターゲット選択の「決定」処理（ウィリー・ウィンキー c82）
+function confirmMultiTarget() {
+  if (!G.multiTargetStore) return;
+  const {card, handIdx, selected} = G.multiTargetStore;
+  // 選択済みターゲットをまとめてapplyBattlecryへ渡す
+  G.multiTargetStore = null;
+  G.phase = 'main';
+  document.getElementById('btn-confirm-multi').style.display = 'none';
+  document.getElementById('target-prompt').classList.remove('active');
+  executePlayCard(G.player, handIdx, {type:'multi', targets: selected});
 }
 
 function showAttackCancelBar(unitName) {
@@ -2325,6 +2360,10 @@ function needsTarget(card) {
     }
     if (card.trigger === '登場時' && card.effect.includes('敵ユニット一体')) {
       // 相手ユニットがいない場合は対象選択不要（効果はスキップ）
+      return G.enemy.field.some(c => c.type === 'ユニット');
+    }
+    if (card.id === 'c82') {
+      // ウィリー・ウィンキー：敵ユニット2体まで複数選択
       return G.enemy.field.some(c => c.type === 'ユニット');
     }
     return false;
@@ -2522,15 +2561,29 @@ function applyBattlecry(pl, bc, card, target, isPlayer) {
         addLog(`「${target.card.name}」を完全無効化`, 'damage');
       }
       break;
-    case 'c82': // ウィリー・ウィンキー：敵ユニット一体を睡眠にする
-      if (target && target.card) {
-        if (!checkShield(target.card)) {
-          target.card.sleeping = true;
-          target.card.hasAttacked = true;
-          addLog(`「${target.card.name}」が睡眠状態になった`, 'damage');
-        }
+    case 'c82': { // ウィリー・ウィンキー：敵ユニット2体まで睡眠にする
+      const c82targets = [];
+      if (target && target.type === 'multi') {
+        // 複数選択モード（2体選択）
+        c82targets.push(...target.targets);
+      } else if (target && target.card) {
+        // 敵が1体だけの場合（即時実行パス）
+        c82targets.push(target);
       }
+      if (c82targets.length === 0) {
+        // フォールバック：敵ユニット全体から最大2体
+        const enemies = G.enemy.field.filter(c => c.type === 'ユニット');
+        enemies.slice(0, 2).forEach(u => c82targets.push({card: u}));
+      }
+      c82targets.forEach(t => {
+        if (t.card && !checkShield(t.card)) {
+          t.card.sleeping = true;
+          t.card.hasAttacked = true;
+          addLog(`「${t.card.name}」が睡眠状態になった`, 'damage');
+        }
+      });
       break;
+    }
     case 'c77': { // シームルグ：自分の場に他にユニットが3体以上いるとき睡眠にならない
       const allies77 = pl.field.filter(c => c.type === 'ユニット' && c !== bc);
       if (allies77.length >= 3) {
@@ -2543,6 +2596,15 @@ function applyBattlecry(pl, bc, card, target, isPlayer) {
       dealDamage(opp, 5);
       applyHeal(pl, 5, null);
       addLog('エリザベート登場時：相手に5点ダメージ＆自分5点回復', 'important');
+      break;
+    case 'c89': // マンドラゴラ：敵ユニット一体を睡眠にする
+      if (target && target.card) {
+        if (!checkShield(target.card)) {
+          target.card.sleeping = true;
+          target.card.hasAttacked = true;
+          addLog(`マンドラゴラ登場時：「${target.card.name}」が睡眠状態になった`, 'damage');
+        }
+      }
       break;
   }
 }
@@ -2833,10 +2895,9 @@ function applySpell(pl, card, target, isPlayer) {
       break;
     }
     default:
-      if (card.id === 'c87') { // オドの還元：最大マナ+1（上限10）
+      if (card.id === 'c87') { // オドの還元：最大マナ+1のみ（上限10・現在マナは変えない）
         if (pl.maxMana < 10) {
           pl.maxMana++;
-          pl.mana = Math.min(pl.mana + 1, pl.maxMana);
           addLog(`${isPlayer ? 'あなた' : 'AI'}：オドの還元：最大マナが${pl.maxMana}になった`, 'heal');
         } else {
           addLog('オドの還元：最大マナはすでに10です', null);
@@ -3825,7 +3886,25 @@ function getAINormalSpellTarget(card, ai, player) {
 
 // ===== TARGET CLICKING =====
 function onClickTarget(target) {
-  if (G.phase === 'targeting') {
+  if (G.phase === 'multi-targeting') {
+    // 複数ターゲット選択モード（c82 ウィリー・ウィンキー）
+    if (!G.multiTargetStore || target.type !== 'unit') return;
+    const store = G.multiTargetStore;
+    const alreadyIdx = store.selected.findIndex(t => t.card === target.card);
+    if (alreadyIdx >= 0) {
+      // 選択解除
+      store.selected.splice(alreadyIdx, 1);
+    } else if (store.selected.length < store.needed) {
+      store.selected.push(target);
+    }
+    // 選択数に応じてプロンプト更新
+    const remaining = store.needed - store.selected.length;
+    document.getElementById('target-prompt-text').textContent =
+      remaining > 0
+        ? `敵ユニットを最大${store.needed}体選択中（あと${remaining}体可）`
+        : `${store.selected.length}体選択済み（決定を押してください）`;
+    renderAll();
+  } else if (G.phase === 'targeting') {
     if (G.targetingMode) {
       executePlayCard(G.player, G.targetingMode.handIdx, target);
     }
@@ -3945,6 +4024,7 @@ function renderField(elId, field, isPlayer) {
 
   const inAttackSelect = G.isPlayerTurn && G.phase === 'attack-select';
   const inTargeting = G.isPlayerTurn && (G.phase === 'targeting' || G.phase === 'hero-targeting');
+  const inMultiTargeting = G.isPlayerTurn && G.phase === 'multi-targeting';
 
   field.forEach((card, idx) => {
     const cardEl = document.createElement('div');
@@ -3955,6 +4035,16 @@ function renderField(elId, field, isPlayer) {
     if (canAtk && G.phase === 'main') cardEl.classList.add('can-attack');
     if (isPlayer && G.selectedCard?.source === 'field' && G.selectedCard?.idx === idx) cardEl.classList.add('selected');
     if (card.sleeping && card.type === 'ユニット') cardEl.classList.add('exhausted');
+
+    // 複数ターゲット選択モード（c82 ウィリー・ウィンキー）
+    if (!isPlayer && inMultiTargeting && card.type === 'ユニット') {
+      cardEl.classList.add('targetable');
+      // 選択済みならselectedクラスを付与
+      if (G.multiTargetStore?.selected.some(t => t.card === card)) {
+        cardEl.classList.add('selected');
+      }
+      cardEl.onclick = () => onClickTarget({type:'unit', card, isAlly: false});
+    }
 
     // Enemy units as targets（隠密は守護無視で任意攻撃可・アンタッチャブルではない）
     if (!isPlayer && inAttackSelect) {
@@ -4313,6 +4403,8 @@ document.getElementById('btn-cancel-target').onclick = () => {
   G.phase = 'main';
   G.selectedCard = null;
   G.targetingMode = null;
+  G.multiTargetStore = null;
+  document.getElementById('btn-confirm-multi').style.display = 'none';
   document.getElementById('target-prompt').classList.remove('active');
   document.getElementById('card-confirm-bar').classList.remove('active');
   renderAll();
@@ -4755,9 +4847,17 @@ function simPlayCard(S, me, opp, card) {
         break;
       }
       case 'c82': {
-        // 最低HP敵ユニットを睡眠に
-        const t82 = opp.field.filter(c=>c.type==='ユニット').sort((a,b)=>a.currentHp-b.currentHp)[0];
-        if (t82 && !simCheckShield(t82)) { t82.sleeping = true; t82.hasAttacked = true; }
+        // 最低HP敵ユニット2体を睡眠に（優先度：HP低い順）
+        const sorted82 = opp.field.filter(c=>c.type==='ユニット').sort((a,b)=>a.currentHp-b.currentHp);
+        sorted82.slice(0, 2).forEach(t => {
+          if (!simCheckShield(t)) { t.sleeping = true; t.hasAttacked = true; }
+        });
+        break;
+      }
+      case 'c89': {
+        // マンドラゴラ：最低HP敵ユニット1体を睡眠に
+        const t89 = opp.field.filter(c=>c.type==='ユニット').sort((a,b)=>a.currentHp-b.currentHp)[0];
+        if (t89 && !simCheckShield(t89)) { t89.sleeping = true; t89.hasAttacked = true; }
         break;
       }
     }
