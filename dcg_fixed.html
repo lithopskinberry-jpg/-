@@ -648,6 +648,42 @@
   .gc-spell-label { position: absolute; bottom: 4px; left: 0; right: 0; text-align: center;
                     font-size: 0.55rem; color: var(--text2); z-index: 2; }
 
+  /* 守護：金色の枠＋盾アイコン */
+  .game-card.has-guard {
+    border-color: #f0c040 !important;
+    box-shadow: 0 0 8px rgba(240,192,64,0.7), inset 0 0 4px rgba(240,192,64,0.15);
+  }
+  .game-card.has-guard::before {
+    content: '🛡';
+    position: absolute; bottom: 14px; left: 3px;
+    font-size: 0.75rem; z-index: 5;
+    filter: drop-shadow(0 0 3px rgba(240,192,64,0.9));
+    line-height: 1;
+  }
+  /* 障壁：青白い枠＋ダイヤアイコン */
+  .game-card.has-barrier {
+    border-color: #88ccff !important;
+    box-shadow: 0 0 10px rgba(136,204,255,0.8), inset 0 0 6px rgba(136,204,255,0.2);
+    animation: barrier-shimmer 2s ease-in-out infinite;
+  }
+  .game-card.has-barrier::after {
+    content: '💠';
+    position: absolute; bottom: 14px; right: 3px;
+    font-size: 0.75rem; z-index: 5;
+    filter: drop-shadow(0 0 4px rgba(136,204,255,1));
+    line-height: 1;
+  }
+  /* 守護＋障壁が両方ある場合、::afterが上書きされないよう調整 */
+  .game-card.has-guard.has-barrier::before { bottom: 14px; left: 3px; }
+  .game-card.has-guard.has-barrier::after  { bottom: 14px; right: 3px; }
+  @keyframes barrier-shimmer {
+    0%,100% { box-shadow: 0 0 8px rgba(136,204,255,0.6), inset 0 0 4px rgba(136,204,255,0.15); }
+    50%      { box-shadow: 0 0 16px rgba(136,204,255,1.0), inset 0 0 8px rgba(136,204,255,0.3); }
+  }
+  /* 守護かつcan-attack/selectedのとき枠色が上書きされないよう優先度確保 */
+  .game-card.has-guard.can-attack  { border-color: #f0c040 !important; }
+  .game-card.has-barrier.can-attack { border-color: #88ccff !important; }
+
   .game-card.shrine { border-color: var(--purple); background: linear-gradient(135deg,#1a1535,#251545); }
   .game-card.shrine .gc-name { color: #cc99ff; }
 
@@ -3471,7 +3507,7 @@ function aiAct() {
         else dealDamage(player, 1);
         addLog('AIシジル発動：焦熱', 'damage');
         break;
-      case 'mid': spawnToken(ai, makeToken('1/1')); addLog('AIシジル発動：召喚','important'); break;
+      case 'mid': spawnToken(ai, {id:'tok_mid', name:'フェアリー', type:'ユニット', cost:0, atk:1, hp:1, keyword:'', trigger:'', effect:''}); addLog('AIシジル発動：召喚','important'); break;
       case 'draw': drawCard(ai); addLog('AIシジル発動：叡智','important'); break;
       case 'heal': addLog('AIシジル発動：治癒', 'heal'); applyHeal(ai, 2, null); break;
       case 'buff': if (target && target.card) { target.card.currentAtk++; } addLog('AIシジル発動：鼓舞','heal'); break;
@@ -3781,7 +3817,7 @@ function aiActNormal() {
         if (target && target.type === 'unit') dealDamageToUnit(target.card, 1);
         else dealDamage(player, 1);
         addLog('AIシジル発動：焦熱', 'damage'); break;
-      case 'mid': spawnToken(ai, makeToken('1/1')); addLog('AIシジル発動：召喚','important'); break;
+      case 'mid': spawnToken(ai, {id:'tok_mid', name:'フェアリー', type:'ユニット', cost:0, atk:1, hp:1, keyword:'', trigger:'', effect:''}); addLog('AIシジル発動：召喚','important'); break;
       case 'draw': drawCard(ai); addLog('AIシジル発動：叡智','important'); break;
       case 'heal':
         addLog('AIシジル発動：治癒','heal');
@@ -4035,6 +4071,9 @@ function renderField(elId, field, isPlayer) {
     if (canAtk && G.phase === 'main') cardEl.classList.add('can-attack');
     if (isPlayer && G.selectedCard?.source === 'field' && G.selectedCard?.idx === idx) cardEl.classList.add('selected');
     if (card.sleeping && card.type === 'ユニット') cardEl.classList.add('exhausted');
+    // 守護・障壁の視覚表示
+    if (card.type === 'ユニット' && card.keyword?.includes('守護')) cardEl.classList.add('has-guard');
+    if (card.type === 'ユニット' && card.keyword?.includes('障壁') && !card.shieldBroken) cardEl.classList.add('has-barrier');
 
     // 複数ターゲット選択モード（c82 ウィリー・ウィンキー）
     if (!isPlayer && inMultiTargeting && card.type === 'ユニット') {
