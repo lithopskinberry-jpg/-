@@ -1534,19 +1534,21 @@ const ALL_CARDS = [
   {id:'c74', cost:4, name:'メガイラ', type:'ユニット', atk:2, hp:4, keyword:'', trigger:'被ダメ時', effect:'このユニットまたは自プレイヤーがダメージを受けたとき、最もHPが低い敵ユニット一体に1点ダメージ', aiRole:''},
   {id:'c75', cost:3, name:'ケイオスマジック', type:'スペル', atk:0, hp:0, keyword:'', trigger:'', effect:'このゲーム中、シジルをターンに3回まで使用できる', aiRole:''},
   {id:'c76', cost:10, name:'星を落とす魔法', type:'スペル', atk:0, hp:0, keyword:'至高', trigger:'', effect:'相手プレイヤーに8点ダメージ', aiRole:'finisher'},
-  {id:'c77', cost:4, name:'シームルグ', type:'ユニット', atk:3, hp:4, keyword:'', trigger:'登場時', effect:'自分の場に他にユニットが3体以上いるとき、睡眠にならない', aiRole:''},
+  {id:'c77', cost:4, name:'シームルグ', type:'ユニット', atk:3, hp:4, keyword:'', trigger:'登場時', effect:'自分の場に他にユニットが2体以上いるとき、睡眠にならない', aiRole:''},
   {id:'c78', cost:3, name:'生命の冒涜', type:'スペル', atk:0, hp:0, keyword:'', trigger:'', effect:'ユニット一体を破壊し、そのユニットのコスト÷2（切り上げ）/同値のキメラトークンを破壊されたユニットの場に召喚', aiRole:'removal'},
-  {id:'c79', cost:5, name:'魔力の源泉', type:'陣地', atk:0, hp:0, keyword:'', trigger:'', effect:'場にある限り、互いの手札のカードコストを半分（切り上げ）にする', aiRole:''},
+  {id:'c79', cost:5, name:'魔力溢れる遺跡', type:'陣地', atk:0, hp:0, keyword:'', trigger:'', effect:'場にある限り、互いの手札のカードコストを半分（切り上げ）にする', aiRole:''},
   {id:'c80', cost:6, name:'アヌビスの天秤', type:'スペル', atk:0, hp:0, keyword:'', trigger:'', effect:'敵ユニット一体に1点ダメージを与え、その後そのユニットを破壊する', aiRole:''},
   {id:'c81', cost:7, name:'メイルシュトローム', type:'スペル', atk:0, hp:0, keyword:'', trigger:'', effect:'敵ユニットに2点×4回ダメージ。倒すたびに次のユニットへ移る', aiRole:'boardClear'},
   {id:'c82', cost:5, name:'ウィリー・ウィンキー', type:'ユニット', atk:4, hp:4, keyword:'', trigger:'登場時', effect:'敵ユニット2体を睡眠にする', aiRole:''},
   {id:'c83', cost:4, name:'マンドラゴラ農園', type:'陣地', atk:0, hp:0, keyword:'', trigger:'自ターン終了時', effect:'敵ユニット一体に睡眠を付与する', aiRole:''},
-  {id:'c84', cost:4, name:'オートマタ', type:'ユニット', atk:2, hp:5, keyword:'', trigger:'相手スペル・陣地使用時', effect:'相手がスペルまたは陣地を使用するたびに、相手プレイヤーに1点ダメージ', aiRole:''},
+  {id:'c84', cost:4, name:'オートマタ', type:'ユニット', atk:2, hp:5, keyword:'', trigger:'相手スペル・陣地使用時', effect:'相手がスペルまたは陣地を使用するたびに、相手プレイヤーに2点ダメージ', aiRole:''},
   {id:'c85', cost:7, name:'魔女の工房', type:'陣地', atk:0, hp:0, keyword:'至高', trigger:'自ターン開始時', effect:'手札のコストが最も高いカードのコストを2下げる', aiRole:''},
   {id:'c86', cost:8, name:'ハルマゲドン', type:'スペル', atk:0, hp:0, keyword:'', trigger:'', effect:'全ての場のユニットと陣地を破壊する', aiRole:'boardClear'},
   {id:'c87', cost:2, name:'オドの還元', type:'スペル', atk:0, hp:0, keyword:'至高', trigger:'', effect:'あなたの最大マナを1増やす', aiRole:''},
   {id:'c88', cost:10, name:'エリザベート', type:'ユニット', atk:5, hp:5, keyword:'', trigger:'登場時', effect:'相手に5点ダメージ。あなたを5点回復', aiRole:'removal'},
-  {id:'c89', cost:3, name:'マンドラゴラ', type:'ユニット', atk:2, hp:1, keyword:'', trigger:'登場時', effect:'敵ユニット一体を睡眠にする', aiRole:''},];
+  {id:'c89', cost:3, name:'マンドラゴラ', type:'ユニット', atk:2, hp:1, keyword:'', trigger:'登場時', effect:'敵ユニット一体を睡眠にする', aiRole:''},
+  {id:'c90', cost:1, name:'鏡写し', type:'スペル', atk:0, hp:0, keyword:'', trigger:'', effect:'ユニット一体のATKとHPを入れ替える', aiRole:'debuff'},
+  {id:'c91', cost:6, name:'ワイトキング', type:'ユニット', atk:3, hp:3, keyword:'速攻', trigger:'登場時', effect:'デッキの残り枚数が10枚未満の場合、+5/+5を得る', aiRole:'finisher'},];
 
 const SIGIL_LIST = [
   {id:'burn', name:'焦熱', icon:'🔥', cost:2, desc:'相手または敵ユニット一体に1点ダメージ'},
@@ -2237,7 +2239,7 @@ function getAuraBonus(pl) {
 }
 
 // ユニットが貫通を持つか（自身のキーワード or 騒乱スタンピードオーラ）
-// 魔力の源泉(c79)オーラ：両者どちらかの場にあればtrue（重複なし）
+// 魔力溢れる遺跡(c79)オーラ：両者どちらかの場にあればtrue（重複なし）
 function isManaAuraActive() {
   return G.player.field.some(c => c.id === 'c79') || G.enemy.field.some(c => c.id === 'c79');
 }
@@ -2482,8 +2484,8 @@ function executePlayCard(pl, handIdx, target) {
     // オートマタ(c84)：相手がスペル・陣地を使用するたびに相手に1点
     const oppPl84s = isPlayer ? G.enemy : G.player;
     oppPl84s.field.filter(c => c.id === 'c84' && c.effect !== '【無効化済み】').forEach(() => {
-      dealDamage(pl, 1);
-      addLog(`オートマタ発動：${isPlayer?'あなた':'AI'}に1点ダメージ`, 'damage');
+      dealDamage(pl, 2);
+      addLog(`オートマタ発動：${isPlayer?'あなた':'AI'}に2点ダメージ`, 'damage');
     });
   } else if (card.type === 'スペル') {
     // Counter check
@@ -2514,8 +2516,8 @@ function executePlayCard(pl, handIdx, target) {
     // オートマタ(c84)：相手がスペル・陣地を使用するたびに相手に1点
     const oppPl84sp = isPlayer ? G.enemy : G.player;
     oppPl84sp.field.filter(c => c.id === 'c84' && c.effect !== '【無効化済み】').forEach(() => {
-      dealDamage(pl, 1);
-      addLog(`オートマタ発動：${isPlayer?'あなた':'AI'}に1点ダメージ`, 'damage');
+      dealDamage(pl, 2);
+      addLog(`オートマタ発動：${isPlayer?'あなた':'AI'}に2点ダメージ`, 'damage');
     });
   }
 
@@ -2541,7 +2543,7 @@ function applyShrineEffect(pl, bc, card, isPlayer) {
     case 'c60': // 騒乱スタンピード：オーラで常時+3/貫通付与（登場時の直接書き込みは行わない）
       addLog('騒乱スタンピード設置：自軍全体に貫通＋ATK+3（常時オーラ）', 'important');
       break;
-    case 'c79': // 魔力の源泉：手札コスト半減オーラ
+    case 'c79': // 魔力溢れる遺跡：手札コスト半減オーラ
       addLog('魔力の源泉設置：互いの手札コストが半分になった', 'important');
       renderHand();
       break;
@@ -2620,9 +2622,9 @@ function applyBattlecry(pl, bc, card, target, isPlayer) {
       });
       break;
     }
-    case 'c77': { // シームルグ：自分の場に他にユニットが3体以上いるとき睡眠にならない
+    case 'c77': { // シームルグ：自分の場に他にユニットが2体以上いるとき睡眠にならない
       const allies77 = pl.field.filter(c => c.type === 'ユニット' && c !== bc);
-      if (allies77.length >= 3) {
+      if (allies77.length >= 2) {
         bc.sleeping = false;
         addLog(`「${bc.name}」は睡眠にならなかった`, 'important');
       }
@@ -2640,6 +2642,14 @@ function applyBattlecry(pl, bc, card, target, isPlayer) {
           target.card.hasAttacked = true;
           addLog(`マンドラゴラ登場時：「${target.card.name}」が睡眠状態になった`, 'damage');
         }
+      }
+      break;
+    case 'c91': // ワイトキング：デッキ残り10枚未満で+5/+5
+      if (pl.deck.length < 10) {
+        bc.currentAtk += 5;
+        bc.currentHp += 5;
+        bc.hp += 5;
+        addLog(`ワイトキング登場時：デッキ残り${pl.deck.length}枚 → +5/+5獲得`, 'important');
       }
       break;
   }
@@ -2927,6 +2937,19 @@ function applySpell(pl, card, target, isPlayer) {
             addLog(`「${t81.name}」を撃破、次へ`, 'damage');
           }
         }
+      }
+      break;
+    }
+    case 'c90': { // 鏡写し：対象ユニットのATKとHPを入れ替える（現在値ベース）
+      if (target && target.card) {
+        const t90 = target.card;
+        const tmpAtk = t90.currentAtk;
+        const tmpHp  = t90.currentHp;
+        t90.currentAtk = tmpHp;
+        t90.currentHp  = tmpAtk;
+        addLog(`「${t90.name}」のATKとHPが入れ替わった (${tmpAtk}/${tmpHp} → ${t90.currentAtk}/${t90.currentHp})`, 'damage');
+        cleanDeadUnits();
+        renderAll();
       }
       break;
     }
@@ -3600,6 +3623,11 @@ function getAISpellTarget(card, ai, player) {
       const myPow   = ai.field.filter(c => c.type === 'ユニット').reduce((s,u) => s + u.currentAtk + u.currentHp, 0);
       const oppPow  = player.field.filter(c => c.type === 'ユニット').reduce((s,u) => s + u.currentAtk + u.currentHp, 0);
       return oppPow > myPow ? {type:'face'} : null;
+    }
+    case 'c90': { // 鏡写し：HPが最も高い（ATKより高い）敵ユニットを狙う
+      const t90 = player.field.filter(c => c.type === 'ユニット' && c.currentHp > c.currentAtk)
+        .sort((a, b) => (b.currentHp - b.currentAtk) - (a.currentHp - a.currentAtk))[0];
+      return t90 ? {type:'unit', card:t90} : null;
     }
     // c62: ジャーンの書はターゲット不要（AI処理はapplySpell内で完結）
     default: return {type:'face'};
@@ -4880,9 +4908,9 @@ function simPlayCard(S, me, opp, card) {
         break;
       }
       case 'c77': {
-        // シームルグ：自軍ユニットが3体以上いれば睡眠にならない
+        // シームルグ：自軍ユニットが2体以上いれば睡眠にならない
         const allies77 = me.field.filter(c=>c.type==='ユニット' && c!==u);
-        if (allies77.length >= 3) u.sleeping = false;
+        if (allies77.length >= 2) u.sleeping = false;
         break;
       }
       case 'c82': {
@@ -4917,8 +4945,8 @@ function simPlayCard(S, me, opp, card) {
       case 'c60': /* オーラはsimGetAuraBonusで常時適用 */ break;
       case 'c79': /* 魔力の源泉：コスト半減オーラ（simEffectiveCostで適用） */ break;
     }
-    // オートマタ(c84)：相手が陣地を使用するたびに相手に1点
-    opp.field.filter(c=>c.id==='c84').forEach(()=>{ me.hp -= 1; simCheckHp(S, me, opp); });
+    // オートマタ(c84)：相手が陣地を使用するたびに相手に2点
+    opp.field.filter(c=>c.id==='c84').forEach(()=>{ me.hp -= 2; simCheckHp(S, me, opp); });
 
   } else { // スペル
     // カウンター(c24)チェック
@@ -4930,8 +4958,8 @@ function simPlayCard(S, me, opp, card) {
     simApplySpell(S, me, opp, card);
     // スペルシナジー(c29)
     me.field.filter(c=>c.id==='c29').forEach(c=>{c.currentAtk++;c.currentHp++;});
-    // オートマタ(c84)：相手がスペルを使用するたびに相手に1点
-    opp.field.filter(c=>c.id==='c84').forEach(()=>{ me.hp -= 1; simCheckHp(S, me, opp); });
+    // オートマタ(c84)：相手がスペルを使用するたびに相手に2点
+    opp.field.filter(c=>c.id==='c84').forEach(()=>{ me.hp -= 2; simCheckHp(S, me, opp); });
     simClean(S, me, opp);
   }
 }
@@ -5114,6 +5142,23 @@ function simApplySpell(S, me, opp, card) {
         rem81--;
       }
       simClean(S, me, opp);
+      break; }
+    case 'c90': { // 鏡写し：HPが最も高い（ATKより高い）敵ユニットのATK/HPを入れ替える
+      const t90 = opp.field.filter(c=>c.type==='ユニット' && c.currentHp > c.currentAtk)
+        .sort((a,b)=>(b.currentHp-b.currentAtk)-(a.currentHp-a.currentAtk))[0];
+      if (t90) {
+        const tmp = t90.currentAtk;
+        t90.currentAtk = t90.currentHp;
+        t90.currentHp = tmp;
+        simClean(S, me, opp);
+      }
+      break; }
+    case 'c91': { // ワイトキング：デッキ残り10枚未満で+5/+5
+      if (me.deck.length < 10) {
+        bc.currentAtk += 5;
+        bc.currentHp += 5;
+        bc.hp += 5;
+      }
       break; }
   }
 }
