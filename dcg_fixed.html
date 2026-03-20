@@ -3470,37 +3470,28 @@ function aiAct() {
     .sort((a, b) => effectiveCost(b.c) - effectiveCost(a.c));
 
   if (playable.length > 0) {
-    const {c, i} = playable[0];
-    let target = null;
+    // 実際に使えるカード（スペルはターゲットが存在するもの）を先頭から探す
+    const pick = playable.find(({c: nc}) => {
+      if (nc.type !== 'スペル') return true;
+      return getAISpellTarget(nc, ai, player) !== null;
+    });
 
-    if (c.type === 'スペル') {
-      target = getAISpellTarget(c, ai, player);
-      if (target === null) {
-        // 条件未達のスペル（星を落とす魔法など）はスキップして次のカードへ
-        const next = playable.slice(1).find(({c:nc}) => {
-          if (nc.type !== 'スペル') return true;
-          return getAISpellTarget(nc, ai, player) !== null;
-        });
-        if (next) {
-          target = next.c.type === 'スペル' ? getAISpellTarget(next.c, ai, player) : null;
-          executePlayCard(ai, next.i, target);
-          if (!G.gameOver) setTimeout(aiAct, 400);
-        } else {
-          if (!G.gameOver) setTimeout(aiAct, 400);
-        }
-        return;
+    if (pick) {
+      const {c, i} = pick;
+      let target = null;
+      if (c.type === 'スペル') {
+        target = getAISpellTarget(c, ai, player);
+      } else if (c.type === 'ユニット' && c.trigger === '登場時' && c.effect.includes('相手')) {
+        target = {type: 'face'};
+      } else if (c.type === 'ユニット' && c.trigger === '登場時' && c.effect.includes('敵ユニット一体')) {
+        const weakest = player.field.filter(u => u.type === 'ユニット').sort((a,b) => a.currentHp - b.currentHp)[0];
+        target = weakest ? {type: 'unit', card: weakest} : {type: 'face'};
       }
-    } else if (c.type === 'ユニット' && c.trigger === '登場時' && c.effect.includes('相手')) {
-      target = {type: 'face'};
-    } else if (c.type === 'ユニット' && c.trigger === '登場時' && c.effect.includes('敵ユニット一体')) {
-      const weakest = player.field.filter(c => c.type === 'ユニット').sort((a,b) => a.currentHp - b.currentHp)[0];
-      if (weakest) target = {type: 'unit', card: weakest};
-      else target = {type: 'face'};
+      executePlayCard(ai, i, target);
+      if (!G.gameOver) setTimeout(aiAct, 400);
+      return;
     }
-
-    executePlayCard(ai, i, target);
-    if (!G.gameOver) setTimeout(aiAct, 400);
-    return;
+    // 使えるカードが全て条件未達スペルの場合はフォールスルーしてシジル・攻撃フェーズへ
   }
 
   // シジル発動（AI）
