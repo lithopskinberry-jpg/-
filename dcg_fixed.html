@@ -1911,9 +1911,6 @@ function drawCard(pl) {
 function startTurn() {
   const pl = G.isPlayerTurn ? G.player : G.enemy;
 
-  // ターンカウント：先攻のターンが回ってくるたびに進める（初回ターン1は除く）
-  if ((G.isPlayerTurn === G.playerFirst) && G.turn > 1) G.turn++;
-
   // Mana increase
   pl.maxMana = Math.min(10, pl.maxMana + 1);
   pl.mana = pl.maxMana;
@@ -2104,6 +2101,7 @@ function aiEndTurn() {
   G.selectedCard = null;
   G.phase = 'main';
   G.isPlayerTurn = true;
+  G.turn++;
   renderAll();
   startTurn();
 }
@@ -2361,7 +2359,8 @@ function executePlayCard(pl, handIdx, target) {
     applyShrineEffect(pl, bc, card, isPlayer);
     onCardEnterField(pl, bc); // ターン開始/終了時トリガーを登録
 
-    // オートマタ(c84)：相手がスペル・陣地を使用するたびに相手に2点
+    // オートマタ(c84)：相手がスペル・陣地を使用するたびに相手に1点
+    const oppPl84s = isPlayer ? G.enemy : G.player;
     oppPl84s.field.filter(c => c.id === 'c84' && c.effect !== '【無効化済み】').forEach(() => {
       dealDamage(pl, 2);
       addLog(`オートマタ発動：${isPlayer?'あなた':'AI'}に2点ダメージ`, 'damage');
@@ -2392,7 +2391,8 @@ function executePlayCard(pl, handIdx, target) {
       addLog('スペルシナジー：+1/+1', 'heal');
     });
 
-    // オートマタ(c84)：相手がスペル・陣地を使用するたびに相手に2点
+    // オートマタ(c84)：相手がスペル・陣地を使用するたびに相手に1点
+    const oppPl84sp = isPlayer ? G.enemy : G.player;
     oppPl84sp.field.filter(c => c.id === 'c84' && c.effect !== '【無効化済み】').forEach(() => {
       dealDamage(pl, 2);
       addLog(`オートマタ発動：${isPlayer?'あなた':'AI'}に2点ダメージ`, 'damage');
@@ -2825,8 +2825,6 @@ function applySpell(pl, card, target, isPlayer) {
         const tmpHp  = t90.currentHp;
         t90.currentAtk = tmpHp;
         t90.currentHp  = tmpAtk;
-        // 入れ替え後にHPが0以下になる場合はhp（最大HP）も合わせて更新し、確実に除去されるようにする
-        if (t90.currentHp <= 0) t90.hp = t90.currentHp;
         addLog(`「${t90.name}」のATKとHPが入れ替わった (${tmpAtk}/${tmpHp} → ${t90.currentAtk}/${t90.currentHp})`, 'damage');
         cleanDeadUnits();
         renderAll();
