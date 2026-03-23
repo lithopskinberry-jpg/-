@@ -90,7 +90,10 @@ const ALL_CARDS = [
   {id:'c89', cost:3, name:'マンドラゴラ', type:'ユニット', atk:2, hp:1, keyword:'', trigger:'登場時', effect:'敵ユニット一体を睡眠にする', aiRole:''},
   {id:'c90', cost:1, name:'鏡写し', type:'スペル', atk:0, hp:0, keyword:'', trigger:'', effect:'ユニット一体のATKとHPを入れ替える', aiRole:'debuff'},
   {id:'c91', cost:6, name:'ワイトキング', type:'ユニット', atk:3, hp:3, keyword:'速攻', trigger:'登場時', effect:'デッキの残り枚数が10枚未満の場合、+5/+5を得る', aiRole:'finisher'},
-  {id:'c92', cost:4, name:'アラクネ', type:'ユニット', atk:2, hp:4, keyword:'', trigger:'相手召喚時', effect:'相手が手札からユニットを召喚するたびに、そのユニットに2点ダメージ', aiRole:'trap'},];
+  {id:'c92', cost:4, name:'アラクネ', type:'ユニット', atk:2, hp:4, keyword:'', trigger:'相手召喚時', effect:'相手が手札からユニットを召喚するたびに、そのユニットに2点ダメージ', aiRole:'trap'},
+  {id:'c93', cost:7, name:'ミルメコレオ', type:'ユニット', atk:7, hp:2, keyword:'', trigger:'ターン開始時', effect:'ターン開始時、このユニットの攻撃力とHPを入れ替える', aiRole:''},
+  {id:'c94', cost:6, name:'ペリュトン', type:'ユニット', atk:5, hp:4, keyword:'', trigger:'相手ターン開始時', effect:'相手ターン開始時、影トークン（1/1 守護）を2体召喚する', aiRole:''},
+];
 
 const SIGIL_LIST = [
   {id:'burn', name:'焦熱', icon:'🔥', cost:2, desc:'相手または敵ユニット一体に1点ダメージ'},

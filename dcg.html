@@ -1637,6 +1637,7 @@ function startGame() {
       sotListeners: [],  // ターン開始時トリガー [{uid, fn}]
       eotListeners: [],  // ターン終了時トリガー [{uid, fn}]
       oppEotListeners: [], // 相手ターン終了時トリガー [{uid, fn}]
+      oppSotListeners: [], // 相手ターン開始時トリガー [{uid, fn}]
       oppSummonListeners: [], // 相手召喚時トリガー [{uid, fn}]
       spellListeners: [],     // 自スペル・陣地使用時トリガー [{uid, fn}]
       oppSpellListeners: [],  // 相手スペル・陣地使用時トリガー [{uid, fn}]
@@ -1659,6 +1660,7 @@ function startGame() {
       sotListeners: [],
       eotListeners: [],
       oppEotListeners: [],
+      oppSotListeners: [],
       oppSummonListeners: [],
       spellListeners: [],
       oppSpellListeners: [],
@@ -1845,6 +1847,9 @@ function startTurn() {
 
   // Trigger start-of-turn effects
   triggerStartOfTurn(pl);
+  // 相手ターン開始時トリガーを相手側（oppSotListeners）で発火
+  const oppForSOT = G.isPlayerTurn ? G.enemy : G.player;
+  triggerOppStartOfTurn(oppForSOT);
 
   if (G.isPlayerTurn) {
     addLog('--- あなたのターン ' + G.turn + ' ---', 'important');
@@ -1875,6 +1880,58 @@ function onCardEnterField(pl, bc) {
       checkHp(pl);
     }});
   }
+  if (id === 'c93') { // ミルメコレオ：自・相手ターン開始時にATKとHPを入れ替え
+    // 自ターン開始時
+    pl.sotListeners.push({ uid, fn: () => {
+      const self = pl.field.find(c => c.uid === uid);
+      if (!self || self.effect === '【無効化済み】') return;
+      const tmpAtk = self.currentAtk;
+      self.currentAtk = self.currentHp;
+      self.currentHp = tmpAtk;
+      // 基準HPも同期（最大HPとして扱う）
+      self.hp = self.currentHp;
+      addLog(`${pl === G.player ? '' : 'AI：'}ミルメコレオ：ATK/HPを入れ替え（${self.currentAtk}/${self.currentHp}）`, 'important');
+      if (self.currentHp <= 0) {
+        onCardLeaveField(pl, uid);
+        pl.field = pl.field.filter(c => c.uid !== uid);
+        addLog(`ミルメコレオはHP0で死亡`, 'damage');
+        triggerDeathrattle(self, pl);
+      }
+      renderAll();
+    }});
+    // 相手ターン開始時
+    pl.oppSotListeners.push({ uid, fn: () => {
+      const self = pl.field.find(c => c.uid === uid);
+      if (!self || self.effect === '【無効化済み】') return;
+      const tmpAtk = self.currentAtk;
+      self.currentAtk = self.currentHp;
+      self.currentHp = tmpAtk;
+      self.hp = self.currentHp;
+      addLog(`${pl === G.player ? '' : 'AI：'}ミルメコレオ：ATK/HPを入れ替え（${self.currentAtk}/${self.currentHp}）`, 'important');
+      if (self.currentHp <= 0) {
+        onCardLeaveField(pl, uid);
+        pl.field = pl.field.filter(c => c.uid !== uid);
+        addLog(`ミルメコレオはHP0で死亡`, 'damage');
+        triggerDeathrattle(self, pl);
+      }
+      renderAll();
+    }});
+  }
+  if (id === 'c94') { // ペリュトン：相手ターン開始時に影トークン（1/1 守護）×2召喚
+    pl.oppSotListeners.push({ uid, fn: () => {
+      if (!pl.field.some(c => c.uid === uid)) return;
+      const shadowToken = { id:'tok_c94', name:'影', type:'ユニット', cost:0, atk:1, hp:1, keyword:'守護', trigger:'', effect:'' };
+      let spawned = 0;
+      for (let i = 0; i < 2; i++) {
+        if (pl.field.length >= 5) break;
+        spawnToken(pl, shadowToken);
+        spawned++;
+      }
+      if (spawned > 0) addLog(`${pl === G.player ? '' : 'AI：'}ペリュトン：影トークン×${spawned}体召喚`, 'important');
+      renderAll();
+    }});
+  }
+
   if (id === 'c85') { // 魔女の工房：手札の最高コストカードを2下げる
     pl.sotListeners.push({ uid, fn: () => {
       if (!pl.field.some(c => c.uid === uid)) return;
@@ -2066,6 +2123,7 @@ function onCardLeaveField(pl, uid) {
   pl.sotListeners           = pl.sotListeners.filter(l => l.uid !== uid);
   pl.eotListeners           = pl.eotListeners.filter(l => l.uid !== uid);
   pl.oppEotListeners        = pl.oppEotListeners.filter(l => l.uid !== uid);
+  pl.oppSotListeners        = pl.oppSotListeners.filter(l => l.uid !== uid);
   pl.oppSummonListeners     = pl.oppSummonListeners.filter(l => l.uid !== uid);
   pl.spellListeners         = pl.spellListeners.filter(l => l.uid !== uid);
   pl.oppSpellListeners      = pl.oppSpellListeners.filter(l => l.uid !== uid);
@@ -2079,6 +2137,10 @@ function onCardLeaveField(pl, uid) {
 function triggerStartOfTurn(pl) {
   // リスナー方式に統一
   [...pl.sotListeners].forEach(l => l.fn());
+}
+
+function triggerOppStartOfTurn(pl) {
+  [...pl.oppSotListeners].forEach(l => l.fn());
 }
 
 function triggerEndOfTurn(pl) {
