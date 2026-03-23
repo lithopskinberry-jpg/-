@@ -2,7 +2,8 @@ const CACHE_NAME = 'dcg-v2';
 
 const MUST_CACHE = [
   './',
-  './dcg_fixed.html',
+  './dcg.html',
+  './cards.js',
 ];
 
 // カード画像 c1〜c120（存在しないものは無視）
