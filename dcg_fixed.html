@@ -3762,59 +3762,111 @@ function aiActNormal() {
 }
 
 function getAINormalSpellTarget(card, ai, player) {
-  const role = card.aiRole || '';
+  switch (card.id) {
 
-  // healSpell：healSynergyユニットがいれば優先してそちらを回復
-  if (role === 'healSpell') {
-    const hbu = ai.field.find(c => c.aiRole === 'healSynergy');
-    if (hbu) return { type:'unit', card: hbu, isAlly: true };
-    return { type:'ally' };
+    // ===== 回復スペル =====
+    case 'c4': case 'c22': case 'c40': {
+      const hbu = ai.field.find(c => c.aiRole === 'healSynergy');
+      if (hbu) return { type:'unit', card: hbu, isAlly: true };
+      return { type:'ally' };
+    }
+    case 'c32': case 'c41':
+      return { type:'ally' };
+
+    // ===== 単体デバフ =====
+    case 'c5': { // 土精の足枷：最高ATK敵ユニット、いなければ不使用
+      const t = player.field.filter(c => c.type === 'ユニット').sort((a,b) => b.currentAtk - a.currentAtk)[0];
+      return t ? { type:'unit', card:t } : null;
+    }
+
+    // ===== 単体ダメージ =====
+    case 'c10': { // 火精の火遊び：2点 → HPが2以下を優先（ジャスキル）、なければ最高ATK
+      const killable = player.field.filter(c => c.type === 'ユニット' && c.currentHp <= 2).sort((a,b) => b.currentAtk - a.currentAtk)[0];
+      if (killable) return { type:'unit', card: killable };
+      const t = player.field.filter(c => c.type === 'ユニット').sort((a,b) => b.currentAtk - a.currentAtk)[0];
+      return t ? { type:'unit', card:t } : null;
+    }
+    case 'c31': { // トールハンマー：4点 → HPが4以下を優先（ジャスキル）、なければ最高ATK
+      const killable = player.field.filter(c => c.type === 'ユニット' && c.currentHp <= 4).sort((a,b) => b.currentAtk - a.currentAtk)[0];
+      if (killable) return { type:'unit', card: killable };
+      const t = player.field.filter(c => c.type === 'ユニット').sort((a,b) => b.currentAtk - a.currentAtk)[0];
+      return t ? { type:'unit', card:t } : null;
+    }
+    case 'c71': { // ダモクレスの剣：ATKが高い敵ほど効率が高い
+      const t = player.field.filter(c => c.type === 'ユニット').sort((a,b) => b.currentAtk - a.currentAtk)[0];
+      return t ? { type:'unit', card:t } : null;
+    }
+    case 'c80': { // アヌビスの天秤：障壁持ちを優先、なければ最高ATK
+      const shielded = player.field.filter(c => c.type === 'ユニット' && c.keyword?.includes('障壁') && !c.shieldBroken);
+      if (shielded.length) return { type:'unit', card: shielded.sort((a,b) => b.currentAtk - a.currentAtk)[0] };
+      const t = player.field.filter(c => c.type === 'ユニット').sort((a,b) => b.currentAtk - a.currentAtk)[0];
+      return t ? { type:'unit', card:t } : null;
+    }
+
+    // ===== 単体バフ =====
+    case 'c69': { // 風精の追い風：healSynergyか最高ATKユニットにバフ
+      const hbu = ai.field.find(c => c.aiRole === 'healSynergy');
+      const strongest = ai.field.filter(c => c.type === 'ユニット').sort((a,b) => b.currentAtk - a.currentAtk)[0];
+      const tgt = hbu || strongest;
+      return tgt ? { type:'unit', card: tgt, isAlly: true } : null;
+    }
+
+    // ===== 単体除去 =====
+    case 'c47': { // 破壊の言霊：最高ATKのユニット/陣地を破壊
+      const t = player.field.filter(c => c.type === 'ユニット' || c.type === '陣地')
+        .sort((a,b) => (b.currentAtk||0) - (a.currentAtk||0))[0];
+      return t ? { type:'unit', card:t } : null;
+    }
+    case 'c73': { // リリス：守護・障壁・高ATK優先
+      const t = player.field.filter(c => c.type === 'ユニット')
+        .sort((a,b) => {
+          const aScore = (a.keyword?.includes('守護')?3:0) + (a.keyword?.includes('障壁')?2:0) + (a.currentAtk||0);
+          const bScore = (b.keyword?.includes('守護')?3:0) + (b.keyword?.includes('障壁')?2:0) + (b.currentAtk||0);
+          return bScore - aScore;
+        })[0];
+      return t ? { type:'unit', card:t } : null;
+    }
+    case 'c78': { // 生命の冒涜：最高ATK敵、なければ自分の最低コストユニット
+      const strongEnemy = player.field.filter(c => c.type === 'ユニット').sort((a,b) => b.currentAtk - a.currentAtk)[0];
+      if (strongEnemy) return { type:'unit', card: strongEnemy };
+      const weakAlly = ai.field.filter(c => c.type === 'ユニット').sort((a,b) => a.cost - b.cost)[0];
+      return weakAlly ? { type:'unit', card: weakAlly } : null;
+    }
+
+    // ===== 陣地破壊 =====
+    case 'c61': { // 万陣破：相手の陣地を狙う
+      const t = player.field.filter(c => c.type === '陣地')[0];
+      return t ? { type:'unit', card:t } : null;
+    }
+
+    // ===== 鏡写し =====
+    case 'c90': { // HPがATKより高い敵を弱体化
+      const t = player.field.filter(c => c.type === 'ユニット' && c.currentHp > c.currentAtk)
+        .sort((a,b) => (b.currentHp - b.currentAtk) - (a.currentHp - a.currentAtk))[0];
+      return t ? { type:'unit', card:t } : null;
+    }
+
+    // ===== フィニッシャー =====
+    case 'c76': { // 星を落とす魔法：盤面ATK合計+8で削りきれる時のみ
+      const fieldAtk = ai.field.filter(c => c.type === 'ユニット').reduce((s,u) => s + u.currentAtk, 0);
+      return (fieldAtk + 8 >= player.hp) ? { type:'face' } : null;
+    }
+
+    // ===== 全体除去 =====
+    case 'c52': case 'c86': { // ラグナロク・ハルマゲドン：相手盤面が自分より強い時のみ
+      const myPow  = ai.field.filter(c => c.type === 'ユニット').reduce((s,u) => s + u.currentAtk + u.currentHp, 0);
+      const oppPow = player.field.filter(c => c.type === 'ユニット').reduce((s,u) => s + u.currentAtk + u.currentHp, 0);
+      return oppPow > myPow ? { type:'face' } : null;
+    }
+
+    // ===== 全体ダメージ・全体デバフ：敵ユニットがいる時のみ =====
+    case 'c11': case 'c39': case 'c57': case 'c81': case 'c21': case 'c72':
+      return player.field.some(c => c.type === 'ユニット') ? { type:'face' } : null;
+
+    // ===== ターゲット不要系（ドロー・マナ・全体バフ・トークンなど） =====
+    default:
+      return { type:'face' };
   }
-
-  // boardClear：相手フィールドの最高ATKユニットを狙う、いなければフェイス
-  if (role === 'boardClear') {
-    const t = player.field.filter(c => c.type === 'ユニット').sort((a,b) => b.currentAtk - a.currentAtk)[0];
-    return t ? { type:'unit', card:t } : { type:'face' };
-  }
-
-  // ハルマゲドン(c86)：相手盤面が自分より強い時だけ使う
-  if (card.id === 'c86') {
-    const myPow  = ai.field.filter(c => c.type === 'ユニット').reduce((s,u) => s + u.currentAtk + u.currentHp, 0);
-    const oppPow = player.field.filter(c => c.type === 'ユニット').reduce((s,u) => s + u.currentAtk + u.currentHp, 0);
-    return oppPow > myPow ? { type:'face' } : null;
-  }
-
-  // リリス(c73)：最も脅威な敵ユニット（守護・障壁・高ATK優先）を無効化
-  if (card.id === 'c73') {
-    const t = player.field.filter(c => c.type === 'ユニット')
-      .sort((a,b) => {
-        const aScore = (a.keyword?.includes('守護')?3:0) + (a.keyword?.includes('障壁')?2:0) + (a.currentAtk||0);
-        const bScore = (b.keyword?.includes('守護')?3:0) + (b.keyword?.includes('障壁')?2:0) + (b.currentAtk||0);
-        return bScore - aScore;
-      })[0];
-    return t ? { type:'unit', card:t } : null;
-  }
-
-  // 単体除去系（効果に「破壊」を含む）
-  if (card.effect?.includes('破壊')) {
-    const t = player.field.filter(c => c.type === 'ユニット' || c.type === '陣地')
-      .sort((a,b) => (b.currentAtk||0) + (b.hp||0) - ((a.currentAtk||0) + (a.hp||0)))[0];
-    return t ? { type:'unit', card:t } : null;
-  }
-
-  // 単体ダメージ系（効果に「ユニット一体」を含む）
-  if (card.effect?.includes('ユニット一体')) {
-    const t = player.field.filter(c => c.type === 'ユニット').sort((a,b) => b.currentAtk - a.currentAtk)[0];
-    return t ? { type:'unit', card:t } : { type:'face' };
-  }
-
-  // デバフ系（効果に「デバフ」を含む）
-  if (card.effect?.includes('デバフ')) {
-    const t = player.field.filter(c => c.type === 'ユニット').sort((a,b) => b.currentAtk - a.currentAtk)[0];
-    return t ? { type:'unit', card:t } : { type:'face' };
-  }
-
-  return { type:'face' };
 }
 
 // ===== TARGET CLICKING =====
