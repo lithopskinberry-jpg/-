@@ -93,6 +93,9 @@ const ALL_CARDS = [
   {id:'c92', cost:4, name:'アラクネ', type:'ユニット', atk:2, hp:4, keyword:'', trigger:'相手召喚時', effect:'相手が手札からユニットを召喚するたびに、そのユニットに2点ダメージ', aiRole:'trap'},
   {id:'c93', cost:7, name:'ミルメコレオ', type:'ユニット', atk:7, hp:2, keyword:'', trigger:'ターン開始時', effect:'ターン開始時、このユニットの攻撃力とHPを入れ替える', aiRole:''},
   {id:'c94', cost:6, name:'ペリュトン', type:'ユニット', atk:5, hp:4, keyword:'', trigger:'相手ターン開始時', effect:'相手ターン開始時、影トークン（1/1 守護）を2体召喚する', aiRole:''},
+  {id:'c95', cost:4, name:'マーリン', type:'ユニット', atk:3, hp:4, keyword:'', trigger:'スペル使用時', effect:'1枚ドローする', aiRole:'spellSynergy'},
+
+
 ];
 
 const SIGIL_LIST = [
