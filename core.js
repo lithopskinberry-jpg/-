@@ -960,6 +960,16 @@ function applyBattlecry(pl, bc, card, target, isPlayer) {
         addLog(`サキュバス登場時：「${target.card.name}」のキーワードを無効化`, 'damage');
       }
       break;
+    case 'c98': { // ロトパゴイ：相手の手札をランダムに1枚破棄
+      if (opp.hand.length > 0) {
+        const idx98 = Math.floor(Math.random() * opp.hand.length);
+        const discarded98 = opp.hand.splice(idx98, 1)[0];
+        addLog(`ロトパゴイ登場時：「${isPlayer ? 'AI' : 'あなた'}」の手札「${discarded98.name}」を破棄`, 'damage');
+      } else {
+        addLog('ロトパゴイ登場時：相手の手札がなかった', null);
+      }
+      break;
+    }
   }
 }
 

@@ -96,6 +96,7 @@ const ALL_CARDS = [
   {id:'c95', cost:4, name:'マーリン', type:'ユニット', atk:3, hp:4, keyword:'', trigger:'スペル使用時', effect:'あなたがスペルを使用するたびに1枚ドローする', aiRole:'spellSynergy'},
   {id:'c96', cost:7, name:'レーテ', type:'ユニット', atk:4, hp:4, keyword:'', trigger:'登場時', effect:'登場時、相手の手札を最大2枚ランダムに破棄する', aiRole:''},
   {id:'c97', cost:3, name:'サキュバス', type:'ユニット', atk:2, hp:2, keyword:'', trigger:'登場時', effect:'登場時、敵ユニット一体のキーワード能力を無効化する', aiRole:''},
+  {id:'c98', cost:3, name:'ロトパゴイ', type:'ユニット', atk:2, hp:1, keyword:'', trigger:'登場時', effect:'登場時、相手の手札をランダムに1枚破棄する', aiRole:'removal'},
 ];
 
 const SIGIL_LIST = [
