@@ -97,6 +97,8 @@ const ALL_CARDS = [
   {id:'c96', cost:7, name:'レーテ', type:'ユニット', atk:4, hp:4, keyword:'', trigger:'登場時', effect:'登場時、相手の手札を最大2枚ランダムに破棄する', aiRole:''},
   {id:'c97', cost:3, name:'サキュバス', type:'ユニット', atk:2, hp:2, keyword:'', trigger:'登場時', effect:'登場時、敵ユニット一体のキーワード能力を無効化する', aiRole:''},
   {id:'c98', cost:3, name:'ロトパゴイ', type:'ユニット', atk:2, hp:1, keyword:'', trigger:'登場時', effect:'登場時、相手の手札をランダムに1枚破棄する', aiRole:'removal'},
+  {id:'c99', cost:7, name:'結束を破壊する話術', type:'スペル', atk:0, hp:0, keyword:'', trigger:'', effect:'相手の場のユニット一体を自分の場に移す。そのユニットは睡眠を得る', aiRole:'removal'},
+  {id:'c100', cost:9, name:'天魔の魔女', type:'ユニット', atk:5, hp:5, keyword:'至高', trigger:'登場時', effect:'シジルの種類を変更できる。場にいる限りシジルのコストが-2される', aiRole:''},
 ];
 
 const SIGIL_LIST = [

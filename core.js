@@ -295,6 +295,7 @@ function startGame() {
       sigil: {...selectedSigil},
       sigilUseCount: 0,
       sigilMaxUse: 1,
+      sigilDiscount: 0,
       deckOutCount: 0,
       sotListeners: [],  // ターン開始時トリガー [{uid, fn}]
       eotListeners: [],  // ターン終了時トリガー [{uid, fn}]
@@ -711,6 +712,7 @@ function needsTarget(card) {
     if (card.id === 'c71') return G.enemy.field.some(c => c.type === 'ユニット'); // ダモクレスの剣：敵ユニット必須
     if (card.id === 'c73') return G.enemy.field.some(c => c.type === 'ユニット'); // リリス：敵ユニット必須
     if (card.id === 'c80') return G.enemy.field.some(c => c.type === 'ユニット'); // アヌビスの天秤：敵ユニット必須
+    if (card.id === 'c99') return G.enemy.field.some(c => c.type === 'ユニット'); // 結束を破壊する話術：敵ユニット必須
     if (card.id === 'c61') { // 万陣破：自分・相手どちらかに陣地があれば対象選択
       return G.player.field.some(c => c.type === '陣地') || G.enemy.field.some(c => c.type === '陣地');
     }
@@ -970,8 +972,20 @@ function applyBattlecry(pl, bc, card, target, isPlayer) {
       }
       break;
     }
-  }
-}
+    case 'c100': { // 天魔の魔女：登場時シジル変更＋場にいる限りコスト-2
+      if (isPlayer) {
+        // シジルコスト割引を付与（場を離れたら解除はonCardLeaveFieldで行う）
+        G.player.sigilDiscount = (G.player.sigilDiscount || 0) + 2;
+        addLog('天魔の魔女：シジルコストが2下がった', 'important');
+        // シジル変更モーダルを表示
+        showSigilChangeModal();
+      } else {
+        // AI：最もATKが高いシジルを選択（burn固定で十分）
+        G.enemy.sigil = {...SIGIL_LIST[0]};
+        addLog('天魔の魔女：AIがシジルを変更した', 'important');
+      }
+      break;
+    }
 
 function applySpell(pl, card, target, isPlayer) {
   const opp = isPlayer ? G.enemy : G.player;
@@ -1271,7 +1285,40 @@ function applySpell(pl, card, target, isPlayer) {
       }
       break;
     }
-    default:
+    case 'c99': { // 結束を破壊する話術：相手ユニット一体を自分の場に移し睡眠付与
+      // targetがnullの場合（AI使用時）：最もATKの高い敵ユニットを選択
+      let stealTarget = (target && target.card) ? target.card : null;
+      if (!stealTarget) {
+        const candidates = opp.field.filter(c => c.type === 'ユニット');
+        if (candidates.length > 0) {
+          stealTarget = candidates.reduce((a, b) => (a.currentAtk >= b.currentAtk ? a : b));
+        }
+      }
+      if (stealTarget) {
+        // 障壁チェック（障壁があれば無効化して終了）
+        if (checkShield(stealTarget)) break;
+        // 自分の場が満員なら効果なし
+        if (pl.field.length >= 5) {
+          addLog('結束を破壊する話術：自分の場が満員のため移動できなかった', 'damage');
+          break;
+        }
+        // 相手フィールドから除去
+        const stealIdx = opp.field.indexOf(stealTarget);
+        if (stealIdx < 0) break;
+        onCardLeaveField(opp, stealTarget.uid);
+        opp.field.splice(stealIdx, 1);
+        // 睡眠付与・攻撃済みフラグをセット
+        stealTarget.sleeping = true;
+        stealTarget.hasAttacked = true;
+        stealTarget.uid = Math.random(); // UIDを更新
+        // 自分の場に追加＆リスナー再登録
+        pl.field.push(stealTarget);
+        onCardEnterField(pl, stealTarget);
+        addLog(`「${stealTarget.name}」を奪取！自分の場に移した（睡眠）`, 'important');
+        renderAll();
+      }
+      break;
+    }
       if (card.id === 'c87') { // オドの還元：最大マナ+1のみ（上限10・現在マナは変えない）
         if (pl.maxMana < 10) {
           pl.maxMana++;
@@ -1654,11 +1701,48 @@ function executeAttack(atkPl, attacker, defPl, target) {
   showCardDetail(null);
 }
 
+// ===== SIGIL CHANGE MODAL (天魔の魔女) =====
+function showSigilChangeModal() {
+  let modal = document.getElementById('modal-sigil-change');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modal-sigil-change';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;z-index:9999;';
+    modal.innerHTML = `
+      <div style="background:#1a1a2e;border:2px solid #a855f7;border-radius:12px;padding:1.5rem;max-width:420px;width:92%;text-align:center;">
+        <div style="font-size:1.1rem;color:#e2b4ff;margin-bottom:1rem;font-weight:bold;">🧙‍♀️ 天魔の魔女<br><span style="font-size:0.85rem;color:#ccc;">シジルの種類を選んでください</span></div>
+        <div id="sigil-change-list" style="display:flex;flex-wrap:wrap;gap:0.6rem;justify-content:center;margin-bottom:1rem;"></div>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+  const list = document.getElementById('sigil-change-list');
+  list.innerHTML = '';
+  SIGIL_LIST.forEach(s => {
+    const btn = document.createElement('button');
+    const isSelected = G.player.sigil.id === s.id;
+    btn.style.cssText = `background:${isSelected ? '#6d28d9' : '#2d2d4e'};border:2px solid ${isSelected ? '#a855f7' : '#555'};border-radius:8px;padding:0.6rem 0.8rem;color:#fff;cursor:pointer;min-width:100px;font-size:0.85rem;`;
+    btn.innerHTML = `<div style="font-size:1.3rem">${s.icon}</div><div style="font-weight:bold">${s.name}</div><div style="font-size:0.75rem;color:#aaa;margin-top:2px">${s.desc}</div>`;
+    btn.onclick = () => {
+      G.player.sigil = {...s};
+      addLog(`天魔の魔女：シジルを「${s.name}」に変更`, 'important');
+      modal.style.display = 'none';
+      renderAll();
+    };
+    list.appendChild(btn);
+  });
+  modal.style.display = 'flex';
+}
+
 // ===== HERO POWER =====
+function getSigilCost() {
+  return Math.max(0, 2 - (G.player.sigilDiscount || 0));
+}
+
 function useSigil() {
   if (!G.isPlayerTurn || G.gameOver) return;
   if (G.player.sigilUseCount >= G.player.sigilMaxUse) return;
-  if (G.player.mana < 2) return;
+  const cost = getSigilCost();
+  if (G.player.mana < cost) return;
 
   const hp = G.player.sigil;
   const needsTarget = ['burn', 'heal', 'buff', 'debuff'].includes(hp.id);
@@ -1677,7 +1761,7 @@ function useSigil() {
 
 function executeSigil(target) {
   const hp = G.player.sigil;
-  G.player.mana -= 2;
+  G.player.mana -= getSigilCost();
   G.player.sigilUseCount++;
 
   switch(hp.id) {

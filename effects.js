@@ -269,6 +269,14 @@ function onCardEnterField(pl, bc) {
 
 // カードがフィールドから離れたとき、そのuidのリスナーをすべて解除する
 function onCardLeaveField(pl, uid) {
+  // 天魔の魔女(c100)が場を離れる場合、シジルコスト割引を解除
+  if (pl === G.player) {
+    const leaving = pl.field.find(c => c.uid === uid);
+    if (leaving && leaving.id === 'c100') {
+      G.player.sigilDiscount = Math.max(0, (G.player.sigilDiscount || 0) - 2);
+      addLog('天魔の魔女が場を離れた：シジルコストが元に戻った', 'damage');
+    }
+  }
   pl.sotListeners           = pl.sotListeners.filter(l => l.uid !== uid);
   pl.eotListeners           = pl.eotListeners.filter(l => l.uid !== uid);
   pl.oppEotListeners        = pl.oppEotListeners.filter(l => l.uid !== uid);
