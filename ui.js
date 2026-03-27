@@ -583,29 +583,6 @@ function showScreen(id) {
   if (id === 'stats') { refreshSimDeckSelects(); updateSimDeckUI(); }
 }
 
-// ===== INIT EVENTS =====
-document.getElementById('btn-end-turn').onclick = () => {
-  if (G.isPlayerTurn && !G.gameOver) endTurn();
-};
-
-document.getElementById('btn-cancel-target').onclick = () => {
-  G.phase = 'main';
-  G.selectedCard = null;
-  G.targetingMode = null;
-  G.multiTargetStore = null;
-  document.getElementById('btn-confirm-multi').style.display = 'none';
-  document.getElementById('target-prompt').classList.remove('active');
-  document.getElementById('card-confirm-bar').classList.remove('active');
-  renderAll();
-};
-
-document.getElementById('btn-sigil').onclick = useSigil;
-
-document.getElementById('btn-restart').onclick = () => {
-  document.getElementById('game-overlay').classList.remove('active');
-  showScreen('hero');
-};
-
 // ===== DECK STORAGE (storage layer - swap this function for app migration) =====
 const STORAGE_KEY = 'dcg_saved_decks';
 
@@ -721,12 +698,33 @@ function copyExportText() {
   setTimeout(() => btn.textContent = 'コピー', 2000);
 }
 
-// ===== INIT EVENTS (deck save) =====
+// ===== INIT EVENTS =====
 document.addEventListener('DOMContentLoaded', () => {
+  // ゲームボタン
+  document.getElementById('btn-end-turn').onclick = () => {
+    if (G.isPlayerTurn && !G.gameOver) endTurn();
+  };
+  document.getElementById('btn-cancel-target').onclick = () => {
+    G.phase = 'main';
+    G.selectedCard = null;
+    G.targetingMode = null;
+    G.multiTargetStore = null;
+    document.getElementById('btn-confirm-multi').style.display = 'none';
+    document.getElementById('target-prompt').classList.remove('active');
+    document.getElementById('card-confirm-bar').classList.remove('active');
+    renderAll();
+  };
+  document.getElementById('btn-sigil').onclick = useSigil;
+  document.getElementById('btn-restart').onclick = () => {
+    document.getElementById('game-overlay').classList.remove('active');
+    showScreen('hero');
+  };
+  // デッキ保存ボタン
   document.getElementById('btn-save-deck')?.addEventListener('click', saveCurrentDeck);
   document.getElementById('btn-load-deck')?.addEventListener('click', loadSelectedDeck);
   document.getElementById('btn-delete-deck')?.addEventListener('click', deleteSelectedDeck);
   document.getElementById('btn-export-decks')?.addEventListener('click', exportDecks);
   document.getElementById('btn-import-decks')?.addEventListener('click', importDecks);
+  // 初期画面
   initHeroSelect();
 });
