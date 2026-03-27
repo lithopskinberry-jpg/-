@@ -355,6 +355,31 @@
     font-size: 0.6rem; font-weight: 700;
   }
 
+  /* カード一覧 ＋ボタン */
+  .pc-add-btn {
+    position: absolute; bottom: 4px; right: 4px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent); color: white;
+    border: none; font-size: 0.85rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; line-height: 1;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .pc-add-btn:hover { background: #2d8cff; transform: scale(1.15); }
+  .pc-add-btn:disabled { background: var(--bg3); color: var(--text2); cursor: not-allowed; transform: none; }
+
+  /* デッキリスト −ボタン */
+  .de-remove-btn {
+    margin-left: 0.4rem; flex-shrink: 0;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: transparent; color: var(--red);
+    border: 1px solid var(--red); font-size: 0.9rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; line-height: 1;
+    transition: background 0.15s;
+  }
+  .de-remove-btn:hover { background: rgba(231,76,60,0.15); }
+
   /* ========== GAME BOARD ========== */
   /* ========== GAME SCREEN - PORTRAIT / VERTICAL ========== */
   #screen-game {
@@ -1035,12 +1060,6 @@
 
   .filter-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(74,158,255,0.1); }
 
-  /* デッキ構築画面の詳細パネル */
-  #deck-card-detail-panel {
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
 
   /* ========== ANIMATIONS ========== */
 
@@ -1164,22 +1183,6 @@
   <div class="deck-body">
     <div class="card-pool" id="card-pool"></div>
     <div class="deck-sidebar">
-      <!-- デッキ構築用カード詳細パネル -->
-      <div class="card-detail-panel hidden" id="deck-card-detail-panel">
-        <div class="card-detail-art-wrap">
-          <div class="card-detail-art" id="deck-cda-art">
-            <div class="cda-cost" id="deck-cda-cost">0</div>
-            <span id="deck-cda-icon">🃏</span>
-          </div>
-        </div>
-        <div class="card-detail-text">
-          <div class="cdt-name" id="deck-cdt-name">—</div>
-          <div class="cdt-type" id="deck-cdt-type"></div>
-          <div class="cdt-kw" id="deck-cdt-kw"></div>
-          <div class="cdt-stats" id="deck-cdt-stats"></div>
-          <div class="cdt-effect" id="deck-cdt-effect"></div>
-        </div>
-      </div>
       <h3>デッキリスト</h3>
       <div class="deck-list" id="deck-list"></div>
       <div class="deck-footer">
@@ -1404,6 +1407,37 @@
     </div>
   </div>
 </div>
+
+<!-- ===== デッキ構築カード詳細モーダル ===== -->
+<div id="deck-detail-modal" style="display:none;position:fixed;inset:0;z-index:500;align-items:center;justify-content:center;">
+  <div onclick="closeDeckDetailModal()" style="position:absolute;inset:0;background:rgba(0,0,0,0.72);"></div>
+  <div style="position:relative;z-index:501;background:var(--bg2);border:1px solid var(--border);border-radius:12px;width:min(88vw,340px);max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,0.7);">
+    <button onclick="closeDeckDetailModal()" style="position:absolute;top:8px;right:10px;background:none;border:none;color:var(--text2);font-size:1.3rem;cursor:pointer;z-index:10;line-height:1;">✕</button>
+    <!-- 画像 -->
+    <div id="ddm-art" style="width:100%;aspect-ratio:4/3;background:var(--bg3);position:relative;flex-shrink:0;overflow:hidden;">
+      <img id="ddm-img" src="" alt="" style="width:100%;height:100%;object-fit:cover;">
+      <div id="ddm-icon-fallback" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;font-size:3.5rem;">🃏</div>
+      <div id="ddm-cost" style="position:absolute;top:8px;left:10px;background:var(--accent);color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.9rem;">0</div>
+    </div>
+    <!-- テキスト -->
+    <div style="padding:0.8rem 1rem 0.5rem;display:flex;flex-direction:column;gap:0.3rem;overflow-y:auto;flex:1;">
+      <div id="ddm-name" style="font-weight:700;color:var(--gold);font-size:1rem;"></div>
+      <div id="ddm-type" style="color:var(--text2);font-size:0.78rem;"></div>
+      <div id="ddm-kw" style="color:var(--purple);font-size:0.8rem;"></div>
+      <div id="ddm-stats" style="color:var(--green);font-size:0.85rem;font-weight:700;"></div>
+      <div id="ddm-effect" style="color:var(--text);font-size:0.8rem;line-height:1.6;margin-top:0.2rem;white-space:pre-line;"></div>
+    </div>
+    <!-- ボタンエリア -->
+    <div style="padding:0.7rem 1rem;border-top:1px solid var(--border);flex-shrink:0;display:flex;flex-direction:column;gap:0.4rem;">
+      <div style="display:flex;gap:0.5rem;">
+        <button id="ddm-remove-btn" onclick="deckModalRemoveCard()" style="flex:1;padding:0.6rem;background:transparent;color:var(--red);border:1px solid var(--red);border-radius:7px;font-size:0.9rem;font-weight:700;cursor:pointer;display:none;">－ 取り外す</button>
+        <button id="ddm-add-btn" onclick="deckModalAddCard()" style="flex:1;padding:0.6rem;background:var(--accent);color:white;border:none;border-radius:7px;font-size:0.9rem;font-weight:700;cursor:pointer;">＋ デッキに追加</button>
+      </div>
+      <div id="ddm-msg" style="text-align:center;font-size:0.75rem;color:var(--text2);min-height:1.1em;"></div>
+    </div>
+  </div>
+</div>
+
 
 </body>
 </html>

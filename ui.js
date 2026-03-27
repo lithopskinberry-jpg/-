@@ -315,41 +315,110 @@ function renderHand() {
   });
 }
 
+// ===== デッキ構築 カード詳細モーダル =====
+let _deckModalCard = null;  // モーダルで現在表示中のカード
+
+// カード一覧タップ → モーダルを開く（左から呼ばれる）
 function showDeckCardDetail(card) {
-  const panel = document.getElementById('deck-card-detail-panel');
-  if (!card) { panel.classList.add('hidden'); panel.dataset.cardId = ''; return; }
-  panel.classList.remove('hidden');
-  panel.dataset.cardId = card.id;
+  if (!card) return;
+  _deckModalCard = card;
 
-  document.getElementById('deck-cda-cost').textContent = card.cost;
-  document.getElementById('deck-cda-icon').textContent = TYPE_ICON[card.type] || '🃏';
+  // 画像
+  const img = document.getElementById('ddm-img');
+  const fallback = document.getElementById('ddm-icon-fallback');
+  img.style.display = 'block';
+  img.src = `card/${card.id}.jpg`;
+  img.alt = card.name;
+  fallback.style.display = 'none';
+  img.onerror = () => {
+    img.style.display = 'none';
+    fallback.style.display = 'flex';
+    fallback.textContent = TYPE_ICON[card.type] || '🃏';
+  };
 
-  const art = document.getElementById('deck-cda-art');
+  // アート背景
+  const art = document.getElementById('ddm-art');
   if (card.type === '陣地') art.style.background = 'linear-gradient(135deg,#1a1535,#251545)';
   else if (card.type === 'スペル') art.style.background = 'linear-gradient(135deg,#0d1a35,#1a2a5a)';
   else art.style.background = 'var(--bg3)';
 
-  let deckImg = art.querySelector('img.detail-img');
-  if (!deckImg) {
-    deckImg = document.createElement('img');
-    deckImg.className = 'detail-img';
-    deckImg.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:4px;position:absolute;top:0;left:0;';
-    art.appendChild(deckImg);
-  }
-  deckImg.src = `card/${card.id}.jpg`;
-  deckImg.alt = card.name;
-  deckImg.style.display = 'block';
-  deckImg.onerror = () => { deckImg.style.display = 'none'; };
-
-  document.getElementById('deck-cdt-name').textContent = card.name;
-  document.getElementById('deck-cdt-type').textContent = card.type;
-  document.getElementById('deck-cdt-kw').textContent = card.keyword || '';
-  document.getElementById('deck-cdt-stats').textContent = card.type === 'ユニット' ? `ATK ${card.atk}  /  HP ${card.hp}` : '';
-
+  // テキスト
+  document.getElementById('ddm-cost').textContent = card.cost;
+  document.getElementById('ddm-name').textContent = card.name;
+  document.getElementById('ddm-type').textContent = card.type;
+  document.getElementById('ddm-kw').textContent = card.keyword || '';
+  document.getElementById('ddm-stats').textContent =
+    card.type === 'ユニット' ? `ATK ${card.atk}  /  HP ${card.hp}` : '';
   const parts = [];
   if (card.trigger) parts.push(`◆${card.trigger}`);
   if (card.effect) parts.push(card.effect);
-  document.getElementById('deck-cdt-effect').textContent = parts.join('　');
+  document.getElementById('ddm-effect').textContent = parts.join('
+');
+
+  // ボタン表示更新（追加可否・デッキ枚数）
+  _updateDeckModalButtons();
+
+  // モーダルを開く
+  const modal = document.getElementById('deck-detail-modal');
+  modal.style.display = 'flex';
+}
+
+// デッキリストタップ → モーダルを開く（右から呼ばれる、削除ボタンも表示）
+function showDeckCardDetailFromList(card) {
+  showDeckCardDetail(card);
+  // 削除ボタンを必ず表示
+  document.getElementById('ddm-remove-btn').style.display = 'flex';
+}
+
+function closeDeckDetailModal() {
+  document.getElementById('deck-detail-modal').style.display = 'none';
+  _deckModalCard = null;
+}
+
+// ボタンの有効/無効・メッセージを更新
+function _updateDeckModalButtons() {
+  if (!_deckModalCard) return;
+  const card = _deckModalCard;
+  const addBtn = document.getElementById('ddm-add-btn');
+  const msg = document.getElementById('ddm-msg');
+  const inDeck = playerDeck.filter(c => c.id === card.id).length;
+
+  if (!canAddCard(card)) {
+    addBtn.disabled = true;
+    addBtn.style.opacity = '0.4';
+    addBtn.style.cursor = 'not-allowed';
+    msg.textContent = inDeck >= 2 ? `すでに${inDeck}枚入っています` : '追加上限に達しています';
+  } else {
+    addBtn.disabled = false;
+    addBtn.style.opacity = '1';
+    addBtn.style.cursor = 'pointer';
+    msg.textContent = inDeck > 0 ? `現在${inDeck}枚入っています` : '';
+  }
+}
+
+// モーダル内「＋ デッキに追加」
+function deckModalAddCard() {
+  if (!_deckModalCard || !canAddCard(_deckModalCard)) return;
+  playerDeck.push({..._deckModalCard, uid: Math.random()});
+  renderCardPool();
+  renderDeckList();
+  updateDeckCount();
+  _updateDeckModalButtons();
+}
+
+// モーダル内「－ 取り外す」
+function deckModalRemoveCard() {
+  if (!_deckModalCard) return;
+  const idx = playerDeck.findLastIndex(c => c.id === _deckModalCard.id);
+  if (idx === -1) return;
+  playerDeck.splice(idx, 1);
+  renderCardPool();
+  renderDeckList();
+  updateDeckCount();
+  _updateDeckModalButtons();
+  // デッキから全部消えたら削除ボタンを隠す
+  const inDeck = playerDeck.filter(c => c.id === _deckModalCard.id).length;
+  if (inDeck === 0) document.getElementById('ddm-remove-btn').style.display = 'none';
 }
 
 // ===== CARD DETAIL PANEL =====

@@ -131,37 +131,23 @@ function renderCardPool() {
     `;
     el.insertBefore(badge, el.firstChild);
 
-    el.onclick = () => {
-      if (window.matchMedia('(pointer: coarse)').matches) {
-        // タッチ：詳細表示（すでに同じカードの詳細表示中ならデッキに追加、別カードなら表示切替）
-        const panel = document.getElementById('deck-card-detail-panel');
-        // data-card-idで現在表示中のカードIDを追跡
-        const currentId = panel.dataset.cardId;
-        if (!panel.classList.contains('hidden') && currentId === card.id) {
-          if (!canAddCard(card)) return;
-          playerDeck.push({...card, uid: Math.random()});
-          renderCardPool();
-          renderDeckList();
-          updateDeckCount();
-        } else {
-          showDeckCardDetail(card);
-          panel.dataset.cardId = card.id;
-        }
-        return;
-      }
-      // PC：クリックでデッキ追加（従来通り）
+    // ＋ボタン（即デッキ追加）
+    const addBtn = document.createElement('button');
+    addBtn.className = 'pc-add-btn';
+    addBtn.textContent = '＋';
+    addBtn.disabled = !addable;
+    addBtn.onclick = (e) => {
+      e.stopPropagation();
       if (!canAddCard(card)) return;
       playerDeck.push({...card, uid: Math.random()});
       renderCardPool();
       renderDeckList();
       updateDeckCount();
     };
+    el.appendChild(addBtn);
 
-    // PC：ホバーで詳細表示
-    if (!window.matchMedia('(pointer: coarse)').matches) {
-      el.addEventListener('mouseenter', () => showDeckCardDetail(card));
-      el.addEventListener('mouseleave', () => showDeckCardDetail(null));
-    }
+    // カード本体タップ → 詳細モーダル
+    el.onclick = () => showDeckCardDetail(card);
 
     addTooltip(el, card);
     pool.appendChild(el);
@@ -180,14 +166,26 @@ function renderDeckList() {
   Object.values(grouped).sort((a,b) => a.card.cost - b.card.cost).forEach(({card, count}) => {
     const el = document.createElement('div');
     el.className = 'deck-entry';
+    el.style.cursor = 'pointer';
     el.innerHTML = `<div class="de-cost">${card.cost}</div><div class="de-name">${card.name}</div><div class="de-count">×${count}</div>`;
-    el.onclick = () => {
-      const idx = playerDeck.findIndex(c => c.id === card.id);
+
+    // −ボタン（即1枚削除）
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'de-remove-btn';
+    removeBtn.textContent = '－';
+    removeBtn.onclick = (e) => {
+      e.stopPropagation();
+      const idx = playerDeck.findLastIndex(c => c.id === card.id);
       if (idx >= 0) playerDeck.splice(idx, 1);
       renderCardPool();
       renderDeckList();
       updateDeckCount();
     };
+    el.appendChild(removeBtn);
+
+    // カード行タップ → 詳細モーダル（削除ボタンも表示）
+    el.onclick = () => showDeckCardDetailFromList(card);
+
     list.appendChild(el);
   });
 }
