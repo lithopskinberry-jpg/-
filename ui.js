@@ -352,8 +352,7 @@ function showDeckCardDetail(card) {
   const parts = [];
   if (card.trigger) parts.push(`◆${card.trigger}`);
   if (card.effect) parts.push(card.effect);
-  document.getElementById('ddm-effect').textContent = parts.join('
-');
+  document.getElementById('ddm-effect').textContent = parts.join('\n');
 
   // ボタン表示更新（追加可否・デッキ枚数）
   _updateDeckModalButtons();
