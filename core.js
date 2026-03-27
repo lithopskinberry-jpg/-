@@ -629,7 +629,7 @@ function showCardConfirm(handIdx) {
           G.phase = 'multi-targeting';
           G.multiTargetStore = {card, handIdx, needed: 2, selected: []};
           updateTargetPrompt(card);
-          document.getElementById('target-prompt-text').textContent = '敵ユニットを最大2体選択（ウィリー・ウィンキー）';
+          document.getElementById('ctrl-status').textContent = '敵ユニットを最大2体選択（ウィリー・ウィンキー）';
           document.getElementById('btn-confirm-multi').style.display = 'inline-block';
           document.getElementById('btn-confirm-multi').onclick = () => confirmMultiTarget();
           renderAll();
@@ -655,7 +655,7 @@ function cancelCardSelection() {
   G.multiTargetStore = null;
   document.getElementById('btn-confirm-multi').style.display = 'none';
   document.getElementById('card-confirm-bar').classList.remove('active');
-  document.getElementById('target-prompt').classList.remove('active');
+  clearTargetPrompt();
   showCardDetail(null);
   renderAll();
 }
@@ -668,7 +668,7 @@ function confirmMultiTarget() {
   G.multiTargetStore = null;
   G.phase = 'main';
   document.getElementById('btn-confirm-multi').style.display = 'none';
-  document.getElementById('target-prompt').classList.remove('active');
+  clearTargetPrompt();
   executePlayCard(G.player, handIdx, {type:'multi', targets: selected});
 }
 
@@ -735,9 +735,19 @@ function needsTarget(card) {
 }
 
 function updateTargetPrompt(card) {
-  const p = document.getElementById('target-prompt');
-  document.getElementById('target-prompt-text').textContent = `対象を選択 (${card.name})`;
-  p.classList.add('active');
+  document.getElementById('ctrl-status').textContent = `対象を選択 (${card.name})`;
+  document.getElementById('ctrl-status').style.color = 'var(--gold)';
+  const cancelBtn = document.getElementById('btn-cancel-target');
+  if (cancelBtn) cancelBtn.style.display = 'inline-block';
+}
+
+function clearTargetPrompt() {
+  document.getElementById('ctrl-status').textContent = 'カードを選択';
+  document.getElementById('ctrl-status').style.color = '';
+  const cancelBtn = document.getElementById('btn-cancel-target');
+  if (cancelBtn) cancelBtn.style.display = 'none';
+  const confirmBtn = document.getElementById('btn-confirm-multi');
+  if (confirmBtn) confirmBtn.style.display = 'none';
 }
 
 function executePlayCard(pl, handIdx, target) {
@@ -782,7 +792,7 @@ function executePlayCard(pl, handIdx, target) {
       G.phase = 'main';
       G.selectedCard = null;
       G.targetingMode = null;
-      document.getElementById('target-prompt').classList.remove('active');
+      clearTargetPrompt();
       cleanDeadUnits();
       renderAll();
       return;
@@ -805,7 +815,7 @@ function executePlayCard(pl, handIdx, target) {
       G.phase = 'main';
       G.selectedCard = null;
       G.targetingMode = null;
-      document.getElementById('target-prompt').classList.remove('active');
+      clearTargetPrompt();
       cleanDeadUnits();
       renderAll();
       return;
@@ -823,7 +833,7 @@ function executePlayCard(pl, handIdx, target) {
   }
 
   G.targetingMode = null;
-  document.getElementById('target-prompt').classList.remove('active');
+  clearTargetPrompt();
 
   // c62でdiscardモードに入った場合はphaseを維持する
   if (G.phase !== 'discard') {
@@ -1760,8 +1770,10 @@ function useSigil() {
   if (needsTarget) {
     G.phase = 'hero-targeting';
     G.selectedCard = null;
-    document.getElementById('target-prompt-text').textContent = `シジル対象を選択 (${hp.name})`;
-    document.getElementById('target-prompt').classList.add('active');
+    document.getElementById('ctrl-status').textContent = `シジル対象を選択 (${hp.name})`;
+    document.getElementById('ctrl-status').style.color = 'var(--gold)';
+    const cancelBtn = document.getElementById('btn-cancel-target');
+    if (cancelBtn) cancelBtn.style.display = 'inline-block';
     renderAll();
     return;
   }
@@ -1808,7 +1820,7 @@ function executeSigil(target) {
   }
 
   G.phase = 'main';
-  document.getElementById('target-prompt').classList.remove('active');
+  clearTargetPrompt();
   cleanDeadUnits();
   checkHp(G.enemy);
   if (!G.gameOver) renderAll();

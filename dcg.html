@@ -828,22 +828,8 @@
   .deck-pile .dp-count { font-weight: 700; color: var(--text); }
 
   /* Target selection panel */
-  .target-prompt {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(10,14,26,0.95);
-    border: 1px solid var(--gold);
-    border-radius: 8px;
-    padding: 1rem 1.5rem;
-    text-align: center;
-    z-index: 100;
-    display: none;
-  }
-
-  .target-prompt.active { display: block; }
-  .target-prompt p { color: var(--gold); font-size: 0.9rem; margin-bottom: 0.7rem; }
+  /* target-prompt は非表示に固定（ctrl-statusに統合） */
+  .target-prompt { display: none !important; }
 
   .btn-cancel {
     padding: 0.4rem 1rem;
@@ -1295,8 +1281,10 @@
 
   <!-- 固定下部バー -->
   <div class="game-controls">
-    <button class="ctrl-sigil" id="btn-sigil">シジル (2マナ)</button>
+    <button class="ctrl-sigil" id="btn-sigil">🔮<span>シジル</span></button>
     <div class="ctrl-status" id="ctrl-status">カードを選択</div>
+    <button id="btn-confirm-multi" style="display:none;padding:0.4rem 0.7rem;background:var(--accent);border:none;border-radius:5px;color:#fff;cursor:pointer;font-size:0.75rem;font-weight:700;white-space:nowrap;flex-shrink:0;">決定</button>
+    <button id="btn-cancel-target" style="display:none;padding:0.4rem 0.7rem;background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;font-size:0.75rem;white-space:nowrap;flex-shrink:0;">✕</button>
     <button class="ctrl-end-turn" id="btn-end-turn">ターン終了</button>
   </div>
 

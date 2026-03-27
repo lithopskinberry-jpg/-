@@ -16,7 +16,7 @@ function onClickTarget(target) {
     }
     // 選択数に応じてプロンプト更新
     const remaining = store.needed - store.selected.length;
-    document.getElementById('target-prompt-text').textContent =
+    document.getElementById('ctrl-status').textContent =
       remaining > 0
         ? `敵ユニットを最大${store.needed}体選択中（あと${remaining}体可）`
         : `${store.selected.length}体選択済み（決定を押してください）`;
@@ -708,8 +708,7 @@ document.addEventListener('DOMContentLoaded', () => {
     G.selectedCard = null;
     G.targetingMode = null;
     G.multiTargetStore = null;
-    document.getElementById('btn-confirm-multi').style.display = 'none';
-    document.getElementById('target-prompt').classList.remove('active');
+    clearTargetPrompt();
     document.getElementById('card-confirm-bar').classList.remove('active');
     renderAll();
   };
