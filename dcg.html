@@ -415,52 +415,76 @@
     /* 固定高さ合計: 36+42+96+2+96+38+108 = 418px。残りは確認バー+コントロールバーで消費 */
   }
 
-  /* ── AI情報バー ── */
-  .ai-info-bar {
+  /* ── 共通：情報バー ── */
+  .ai-info-bar,
+  .player-info-bar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 0.2rem 0.7rem;
+    padding: 0 0.7rem;
     background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-    height: 36px;
+    height: 44px;
     flex-shrink: 0;
     font-size: 0.72rem;
     gap: 0.5rem;
+    position: relative;
+    overflow: visible;
   }
-  .ai-info-bar .info-hp   { color: var(--green); font-weight: 700; font-size: 0.85rem; }
-  .ai-info-bar .info-hp.low { color: var(--red); }
-  .ai-info-bar .info-mana { color: var(--text2); font-size: 0.68rem; }
-  .ai-info-bar .info-deck { color: var(--text2); font-size: 0.68rem; }
-  .ai-sigil-badge {
+  .ai-info-bar    { border-bottom: 1px solid var(--border); }
+  .player-info-bar{ border-top:    1px solid var(--border); }
+
+  .info-hp        { color: var(--green); font-weight: 700; font-size: 0.9rem; min-width: 28px; }
+  .info-hp.low    { color: var(--red); }
+  .info-deck      { color: var(--text2); font-size: 0.68rem; }
+
+  /* シジルバッジ（統一） */
+  .sigil-badge {
     background: var(--bg3);
     border: 1px solid var(--gold);
-    border-radius: 4px;
+    border-radius: 5px;
     color: var(--gold);
-    font-size: 0.6rem;
-    padding: 1px 5px;
+    font-size: 0.68rem;
+    padding: 0.28rem 0.55rem;
     white-space: nowrap;
-    max-width: 110px;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-  .ai-portrait {
-    width: 26px; height: 26px; border-radius: 50%;
-    border: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.9rem; background: var(--bg3);
-  }
-  .ai-portrait.targetable {
-    border-color: var(--accent2);
-    box-shadow: 0 0 10px rgba(255,107,53,0.7);
-    animation: pulse-red 1s infinite;
+    max-width: 90px;
     cursor: pointer;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+  .sigil-badge:hover { background: rgba(201,168,76,0.15); }
+  .sigil-badge.used  { opacity: 0.4; cursor: not-allowed; border-color: var(--border); color: var(--text2); }
+
+  /* アイコン（共通） */
+  .portrait {
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; background: var(--bg3);
+    cursor: pointer; transition: all 0.2s;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+    margin-top: -8px;
+    margin-bottom: -8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+  .portrait.targetable {
+    border-color: var(--accent2);
+    box-shadow: 0 0 14px rgba(255,107,53,0.8);
+    animation: pulse-red 1s infinite;
   }
 
   @keyframes pulse-red {
-    0%,100% { box-shadow: 0 0 10px rgba(255,107,53,0.6); }
-    50%      { box-shadow: 0 0 20px rgba(255,107,53,0.9); }
+    0%,100% { box-shadow: 0 0 12px rgba(255,107,53,0.6); }
+    50%      { box-shadow: 0 0 24px rgba(255,107,53,1.0); }
   }
+
+  /* マナ */
+  .player-mana { display: flex; gap: 2px; flex-wrap: wrap; max-width: 70px; }
+  .mana-gem { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  .mana-gem.empty { background: #1a2a4a; border: 1px solid var(--border); }
+  .mana-text { color: var(--accent); font-weight: 700; font-size: 0.75rem; }
 
   /* ── 手札エリア ── */
   .hand-area {
@@ -586,37 +610,7 @@
     flex-shrink: 0;
   }
 
-  /* ── プレイヤー情報バー ── */
-  .player-info-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.2rem 0.7rem;
-    background: var(--bg2);
-    border-top: 1px solid var(--border);
-    height: 38px;
-    flex-shrink: 0;
-    gap: 0.5rem;
-    font-size: 0.72rem;
-  }
-  .player-portrait {
-    width: 28px; height: 28px; border-radius: 50%;
-    border: 2px solid var(--border);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1rem; background: var(--bg3);
-    cursor: pointer; transition: all 0.2s;
-  }
-  .player-portrait.targetable {
-    border-color: var(--accent2);
-    box-shadow: 0 0 10px rgba(255,107,53,0.7);
-    animation: pulse-red 1s infinite;
-  }
-  .info-hp   { color: var(--green); font-weight: 700; font-size: 0.85rem; }
-  .info-hp.low { color: var(--red); }
-  .player-mana { display: flex; gap: 2px; flex-wrap: wrap; max-width: 80px; }
-  .mana-gem { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
-  .mana-gem.empty { background: #1a2a4a; border: 1px solid var(--border); }
-  .info-deck { color: var(--text2); font-size: 0.68rem; }
+
 
   /* ── ゲームカード ── */
   .game-card {
@@ -732,20 +726,26 @@
     background: var(--bg2);
     border-top: 2px solid var(--border);
     gap: 0.4rem;
-    height: 46px;
+    height: 52px;
     flex-shrink: 0;
   }
   .ctrl-sigil {
-    padding: 0.3rem 0.55rem;
+    padding: 0.5rem 0.6rem;
     background: var(--bg3);
     border: 1px solid var(--gold);
     border-radius: 5px;
     color: var(--gold);
     cursor: pointer;
-    font-size: 0.68rem;
+    font-size: 0.72rem;
     white-space: nowrap;
     flex-shrink: 0;
     transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    min-width: 44px;
+    line-height: 1.3;
   }
   .ctrl-sigil:hover { background: rgba(201,168,76,0.15); }
   .ctrl-sigil.used  { opacity: 0.4; cursor: not-allowed; border-color: var(--border); color: var(--text2); }
@@ -1154,7 +1154,7 @@
   .spell-cutin-effect { color: var(--text2); font-size: 0.65rem; margin-top: 0.2rem; line-height: 1.4; }
 
   /* Hero power target select */
-  .hp-target-mode .player-portrait { cursor: pointer; }
+  .hp-target-mode .portrait { cursor: pointer; }
   .hp-target-mode .game-card.on-board { cursor: pointer; }
 </style>
 </head>
@@ -1229,18 +1229,19 @@
   </div>
 
   <div class="board" id="board">
+    <!-- AIの手札（伏せ）←上に移動 -->
+    <div class="hand-area enemy-hand-area" id="enemy-hand"></div>
+
     <!-- AI情報バー -->
     <div class="ai-info-bar">
-      <div class="ai-portrait" id="enemy-portrait">🤖</div>
       <div class="info-hp" id="enemy-hp">25</div>
-      <div class="info-mana" id="enemy-mana-text">マナ 0/0</div>
-      <div id="enemy-sigil-badge" class="ai-sigil-badge"></div>
-      <div style="flex:1"></div>
       <div class="info-deck">🂠 <span id="enemy-deck-count">30</span></div>
+      <div style="flex:1"></div>
+      <div class="portrait" id="enemy-portrait">🤖</div>
+      <div style="flex:1"></div>
+      <div id="enemy-sigil-badge" class="sigil-badge" style="pointer-events:none;"></div>
+      <div class="info-mana" id="enemy-mana-text" style="color:var(--text2);font-size:0.68rem;"></div>
     </div>
-
-    <!-- AIの手札（伏せ） -->
-    <div class="hand-area enemy-hand-area" id="enemy-hand"></div>
 
     <!-- AIフィールド -->
     <div class="field-area" id="enemy-field"></div>
@@ -1252,11 +1253,12 @@
 
     <!-- プレイヤー情報バー -->
     <div class="player-info-bar">
-      <div class="player-portrait" id="player-portrait">🧙</div>
-      <div class="info-hp" id="player-hp">25</div>
       <div class="player-mana" id="player-mana-gems"></div>
-      <div style="color:var(--accent);font-weight:700;font-size:0.75rem" id="player-mana-text">0/0</div>
+      <div class="mana-text" id="player-mana-text">0/0</div>
       <div style="flex:1"></div>
+      <div class="portrait" id="player-portrait">🧙</div>
+      <div style="flex:1"></div>
+      <div class="info-hp" id="player-hp">25</div>
       <div class="info-deck">🂠 <span id="player-deck-count">30</span></div>
     </div>
 

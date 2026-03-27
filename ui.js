@@ -51,10 +51,10 @@ function renderAll() {
 
   document.getElementById('enemy-mana-text').textContent = `マナ ${G.enemy.mana}/${G.enemy.maxMana}`;
 
-  // AIシジルバッジ
+  // AIシジルバッジ（アイコン＋名前のみ）
   const ehp = G.enemy.sigil;
   const badge = document.getElementById('enemy-sigil-badge');
-  if (badge && ehp) badge.textContent = `${ehp.icon} ${ehp.name}：${ehp.desc}`;
+  if (badge && ehp) badge.textContent = `${ehp.icon} ${ehp.name}`;
 
   // Mana gems
   const gemsEl = document.getElementById('player-mana-gems');
@@ -90,8 +90,8 @@ function renderAll() {
   // Controls
   const hpBtn = document.getElementById('btn-sigil');
   const sigilRemain = G.player.sigilMaxUse - G.player.sigilUseCount;
-  const sigilCountTxt = G.player.sigilMaxUse > 1 ? ` [残${sigilRemain}/${G.player.sigilMaxUse}]` : '';
-  hpBtn.textContent = `${selectedSigil.icon} シジル：${selectedSigil.name} (2マナ)${sigilCountTxt}`;
+  const sigilCountTxt = G.player.sigilMaxUse > 1 ? `残${sigilRemain}/${G.player.sigilMaxUse}` : '';
+  hpBtn.innerHTML = `<span style="font-size:1rem">${selectedSigil.icon}</span><span>${selectedSigil.name}</span>${sigilCountTxt ? `<span style="font-size:0.6rem;color:var(--text2)">${sigilCountTxt}</span>` : ''}`;
   hpBtn.className = 'ctrl-sigil' + (G.player.sigilUseCount >= G.player.sigilMaxUse || G.player.mana < 2 ? ' used' : '');
   // discard中はターン終了不可
   const endBtn = document.getElementById('btn-end-turn');
