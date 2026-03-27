@@ -986,6 +986,8 @@ function applyBattlecry(pl, bc, card, target, isPlayer) {
       }
       break;
     }
+  } // end switch
+} // end applyBattlecry
 
 function applySpell(pl, card, target, isPlayer) {
   const opp = isPlayer ? G.enemy : G.player;
