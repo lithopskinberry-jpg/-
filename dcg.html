@@ -494,8 +494,9 @@
 
   /* ── カード詳細パネル（手札下の空白スペース） ── */
   .card-detail-panel {
-    max-height: 130px;
-    min-height: 72px;
+    height: 100px;
+    min-height: 100px;
+    max-height: 100px;
     display: flex;
     align-items: stretch;
     background: var(--bg2);
@@ -503,7 +504,9 @@
     flex-shrink: 0;
     overflow: hidden;
   }
-  .card-detail-panel.hidden { display: none; }
+  .card-detail-panel.hidden {
+    visibility: hidden;
+  }
 
   .card-detail-art {
     width: 72px;
