@@ -12,7 +12,11 @@ let G = {}; // game state
 function initHeroSelect() {
   const grid = document.getElementById('hero-grid');
   grid.innerHTML = '';
-  SIGIL_LIST.forEach(h => {
+
+  // SIGIL_LISTが未定義（cards.js読み込み失敗など）でも止まらないよう対策
+  const sigils = (typeof SIGIL_LIST !== 'undefined') ? SIGIL_LIST : [];
+
+  sigils.forEach(h => {
     const el = document.createElement('div');
     el.className = 'hero-card';
     el.innerHTML = `<div class="hero-icon">${h.icon}</div><div class="hero-name">${h.name}</div><div class="hero-desc">${h.desc}</div>`;
@@ -20,11 +24,14 @@ function initHeroSelect() {
       document.querySelectorAll('.hero-card').forEach(x => x.classList.remove('selected'));
       el.classList.add('selected');
       selectedSigil = h;
-      document.getElementById('btn-to-deck').disabled = false;
     };
     grid.appendChild(el);
   });
-  document.getElementById('btn-to-deck').onclick = () => showScreen('deck');
+
+  // シジル未選択でも進めるよう、ボタンは常に有効
+  const btn = document.getElementById('btn-to-deck');
+  btn.disabled = false;
+  btn.onclick = () => showScreen('deck');
 }
 
 // ===== DECK BUILD =====
@@ -266,7 +273,10 @@ function createBoardCard(card) {
 }
 
 function startGame() {
-  if (!selectedSigil) { alert('シジルを選択してください'); return; }
+  // 未選択時はランダムシジルを自動割り当て
+  if (!selectedSigil && typeof SIGIL_LIST !== 'undefined' && SIGIL_LIST.length > 0) {
+    selectedSigil = SIGIL_LIST[Math.floor(Math.random() * SIGIL_LIST.length)];
+  }
   const isFirst = Math.random() < 0.5;
   const aiSigil = SIGIL_LIST[Math.floor(Math.random() * SIGIL_LIST.length)];
   const diffRadio = document.querySelector('input[name="ai-difficulty"]:checked');
