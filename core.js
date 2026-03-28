@@ -903,6 +903,12 @@ function applyBattlecry(pl, bc, card, target, isPlayer) {
     case 'c73': // リリス：完全無効化
       if (target && target.card) {
         if (checkShield(target.card)) break;
+        // 天魔の魔女(c100)が無効化された場合、「コストゼロ」効果を解除
+        if (target.card.id === 'c100') {
+          const ownerPl = G.player.field.includes(target.card) ? G.player : G.enemy;
+          ownerPl.sigilDiscount = Math.max(0, (ownerPl.sigilDiscount || 0) - 2);
+          addLog('天魔の魔女の効果が無効化：シジルコストが元に戻った', 'damage');
+        }
         target.card.keyword = '';
         target.card.trigger = '';
         target.card.effect = '【無効化済み】';
@@ -1305,6 +1311,14 @@ function applySpell(pl, card, target, isPlayer) {
       }
       break;
     }
+    case 'c87': // オドの還元：最大マナ+1のみ（上限10・現在マナは変えない）
+      if (pl.maxMana < 10) {
+        pl.maxMana++;
+        addLog(`${isPlayer ? 'あなた' : 'AI'}：オドの還元：最大マナが${pl.maxMana}になった`, 'heal');
+      } else {
+        addLog('オドの還元：最大マナはすでに10です', null);
+      }
+      break;
     case 'c99': { // 結束を破壊する話術：相手ユニット一体を自分の場に移し睡眠付与
       // targetがnullの場合（AI使用時）：最もATKの高い敵ユニットを選択
       let stealTarget = (target && target.card) ? target.card : null;
@@ -1339,15 +1353,6 @@ function applySpell(pl, card, target, isPlayer) {
       }
       break;
     }
-      if (card.id === 'c87') { // オドの還元：最大マナ+1のみ（上限10・現在マナは変えない）
-        if (pl.maxMana < 10) {
-          pl.maxMana++;
-          addLog(`${isPlayer ? 'あなた' : 'AI'}：オドの還元：最大マナが${pl.maxMana}になった`, 'heal');
-        } else {
-          addLog('オドの還元：最大マナはすでに10です', null);
-        }
-        break;
-      }
       if (card.effect.includes('ユニット一体')) {
         if (target && target.card) { dealDamageToUnit(target.card, parseInt(card.effect.match(/(\d+)点/)?.[1]||0)); }
       }

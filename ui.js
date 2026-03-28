@@ -91,8 +91,9 @@ function renderAll() {
   const hpBtn = document.getElementById('btn-sigil');
   const sigilRemain = G.player.sigilMaxUse - G.player.sigilUseCount;
   const sigilCountTxt = G.player.sigilMaxUse > 1 ? `残${sigilRemain}/${G.player.sigilMaxUse}` : '';
-  hpBtn.innerHTML = `<span style="font-size:1rem">${selectedSigil.icon}</span><span>${selectedSigil.name}</span>${sigilCountTxt ? `<span style="font-size:0.6rem;color:var(--text2)">${sigilCountTxt}</span>` : ''}`;
-  hpBtn.className = 'ctrl-sigil' + (G.player.sigilUseCount >= G.player.sigilMaxUse || G.player.mana < 2 ? ' used' : '');
+  const displaySigil = G.player.sigil || selectedSigil;
+  hpBtn.innerHTML = `<span style="font-size:1rem">${displaySigil.icon}</span><span>${displaySigil.name}</span>${sigilCountTxt ? `<span style="font-size:0.6rem;color:var(--text2)">${sigilCountTxt}</span>` : ''}`;
+  hpBtn.className = 'ctrl-sigil' + (G.player.sigilUseCount >= G.player.sigilMaxUse || G.player.mana < getSigilCost() ? ' used' : '');
   // discard中はターン終了不可
   const endBtn = document.getElementById('btn-end-turn');
   if (endBtn) endBtn.disabled = !G.isPlayerTurn || G.phase === 'discard' || G.gameOver;
