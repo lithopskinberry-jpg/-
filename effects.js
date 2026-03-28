@@ -267,6 +267,28 @@ function onCardEnterField(pl, bc) {
   }
 }
 
+// ===== NULLIFY =====
+// リリス等でユニットを無効化するときに呼ぶ共通処理。
+// ・effect/keyword/trigger/aiRoleをクリアしてフラグを立てる
+// ・「場にある限り有効」な状態変数（sigilDiscountなど）をここで解除する
+// 今後このような即時加算型の永続効果を追加した場合は、このswitch内に解除処理を書く。
+function applyNullify(unit) {
+  const ownerPl = G.player.field.includes(unit) ? G.player : G.enemy;
+  // 「場にある限り有効」な状態変数の解除
+  switch (unit.id) {
+    case 'c100': // 天魔の魔女：シジルコスト割引を解除
+      ownerPl.sigilDiscount = Math.max(0, (ownerPl.sigilDiscount || 0) - 2);
+      addLog('天魔の魔女の効果が無効化：シジルコストが元に戻った', 'damage');
+      break;
+    // 将来のカード追加時はここに case を追加する
+  }
+  // 無効化フラグを立てる（リスナー系はfn内のチェックで自動停止する）
+  unit.keyword = '';
+  unit.trigger = '';
+  unit.effect  = '【無効化済み】';
+  unit.aiRole  = '';
+}
+
 // カードがフィールドから離れたとき、そのuidのリスナーをすべて解除する
 function onCardLeaveField(pl, uid) {
   // 天魔の魔女(c100)が場を離れる場合、シジルコスト割引を解除
