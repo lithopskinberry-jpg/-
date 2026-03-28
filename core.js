@@ -400,8 +400,8 @@ function renderMulliganHand() {
 
 function showMulliganDetail(card) {
   const panel = document.getElementById('mulligan-detail');
-  if (!card) { panel.style.display = 'none'; return; }
-  panel.style.display = 'block';
+  if (!card) { panel.style.visibility = 'hidden'; return; }
+  panel.style.visibility = 'visible';
 
   const icon = { 'ユニット':'⚔️', 'スペル':'✨', '陣地':'🏰' }[card.type] || '🃏';
   const img = document.getElementById('mulligan-detail-img');
