@@ -114,102 +114,114 @@
   #screen-title {
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    background: radial-gradient(ellipse at center, #1a2a5a 0%, #0a0e1a 70%);
+    justify-content: flex-end;
+    background: #ffb7c5;
     gap: 0;
+    position: relative;
+    overflow: hidden;
   }
 
-  #screen-title .title-logo {
-    font-family: 'Cinzel', serif;
-    font-size: 2.8rem;
-    letter-spacing: 0.25em;
-    color: var(--gold);
-    text-shadow: 0 0 40px rgba(201,168,76,0.6), 0 0 80px rgba(201,168,76,0.2);
-    margin-bottom: 0.3rem;
-    text-align: center;
+  .title-bg-img {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: center top;
   }
 
-  #screen-title .title-sub {
-    color: var(--text2);
-    font-size: 0.82rem;
-    letter-spacing: 0.15em;
-    margin-bottom: 3rem;
-  }
-
+  /* ボタンエリア：画面下部に重ねる */
   .mode-select-wrap {
+    position: relative;
+    z-index: 10;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.75rem;
     width: min(88vw, 320px);
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+    padding-top: 0.5rem;
+  }
+
+  /* ボタン下部に白いグラデ背景をうっすら敷く */
+  .mode-select-wrap::before {
+    content: '';
+    position: absolute;
+    bottom: 0; left: -20px; right: -20px;
+    height: 180px;
+    background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 100%);
+    z-index: -1;
+    border-radius: 0;
+    pointer-events: none;
   }
 
   .mode-btn {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 1rem 1.4rem;
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    border-radius: 10px;
+    gap: 0.9rem;
+    padding: 0.85rem 1.2rem;
+    border-radius: 50px;
     cursor: pointer;
     transition: all 0.2s;
     text-align: left;
     width: 100%;
+    border: none;
   }
 
-  .mode-btn:hover:not(:disabled) {
-    border-color: var(--accent);
-    box-shadow: 0 0 20px rgba(74,158,255,0.3);
-    transform: translateY(-2px);
+  .mode-btn.ai-mode {
+    background: linear-gradient(135deg, #ff6fa8, #ff3e7f);
+    box-shadow: 0 4px 18px rgba(255,62,127,0.55), inset 0 1px 0 rgba(255,255,255,0.3);
   }
 
   .mode-btn.ai-mode:hover:not(:disabled) {
-    border-color: var(--gold);
-    box-shadow: 0 0 20px rgba(201,168,76,0.3);
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 7px 24px rgba(255,62,127,0.7), inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+
+  .mode-btn.pvp-mode {
+    background: rgba(255,255,255,0.25);
+    border: 2px solid rgba(255,255,255,0.5);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
   }
 
   .mode-btn:disabled {
-    opacity: 0.4;
+    opacity: 0.55;
     cursor: not-allowed;
   }
 
   .mode-btn .mode-icon {
-    font-size: 2rem;
+    font-size: 1.6rem;
     flex-shrink: 0;
   }
 
   .mode-btn .mode-info {
     display: flex;
     flex-direction: column;
-    gap: 0.2rem;
+    gap: 0.1rem;
+    flex: 1;
   }
 
   .mode-btn .mode-name {
-    font-family: 'Cinzel', serif;
+    font-family: 'Noto Sans JP', sans-serif;
     font-size: 1rem;
-    color: var(--gold);
+    color: #fff;
     font-weight: 700;
     letter-spacing: 0.05em;
-  }
-
-  .mode-btn.pvp-mode .mode-name {
-    color: var(--text2);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
   }
 
   .mode-btn .mode-desc {
-    font-size: 0.72rem;
-    color: var(--text2);
+    font-size: 0.68rem;
+    color: rgba(255,255,255,0.85);
     line-height: 1.4;
   }
 
   .mode-btn .mode-badge {
     margin-left: auto;
-    font-size: 0.62rem;
-    padding: 0.15rem 0.5rem;
-    background: rgba(255,255,255,0.07);
-    border: 1px solid var(--border);
+    font-size: 0.6rem;
+    padding: 0.15rem 0.55rem;
+    background: rgba(0,0,0,0.2);
+    border: 1px solid rgba(255,255,255,0.4);
     border-radius: 20px;
-    color: var(--text2);
+    color: rgba(255,255,255,0.8);
     white-space: nowrap;
     flex-shrink: 0;
   }
@@ -1257,8 +1269,7 @@
 
 <!-- ===== TITLE / MODE SELECT ===== -->
 <div id="screen-title" class="screen active">
-  <div class="title-logo">⚔ CARD DUEL</div>
-  <div class="title-sub">— CHOOSE YOUR BATTLE —</div>
+  <img class="title-bg-img" src="title.jpg" alt="タイトル" onerror="this.style.display='none'">
   <div class="mode-select-wrap">
     <button class="mode-btn ai-mode" onclick="selectMode('ai')">
       <span class="mode-icon">🤖</span>
