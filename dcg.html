@@ -110,6 +110,110 @@
   .screen { display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
   .screen.active { display: flex; }
 
+  /* ========== TITLE / MODE SELECT ========== */
+  #screen-title {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at center, #1a2a5a 0%, #0a0e1a 70%);
+    gap: 0;
+  }
+
+  #screen-title .title-logo {
+    font-family: 'Cinzel', serif;
+    font-size: 2.8rem;
+    letter-spacing: 0.25em;
+    color: var(--gold);
+    text-shadow: 0 0 40px rgba(201,168,76,0.6), 0 0 80px rgba(201,168,76,0.2);
+    margin-bottom: 0.3rem;
+    text-align: center;
+  }
+
+  #screen-title .title-sub {
+    color: var(--text2);
+    font-size: 0.82rem;
+    letter-spacing: 0.15em;
+    margin-bottom: 3rem;
+  }
+
+  .mode-select-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: min(88vw, 320px);
+  }
+
+  .mode-btn {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.4rem;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+    width: 100%;
+  }
+
+  .mode-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    box-shadow: 0 0 20px rgba(74,158,255,0.3);
+    transform: translateY(-2px);
+  }
+
+  .mode-btn.ai-mode:hover:not(:disabled) {
+    border-color: var(--gold);
+    box-shadow: 0 0 20px rgba(201,168,76,0.3);
+  }
+
+  .mode-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .mode-btn .mode-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+  }
+
+  .mode-btn .mode-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .mode-btn .mode-name {
+    font-family: 'Cinzel', serif;
+    font-size: 1rem;
+    color: var(--gold);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+
+  .mode-btn.pvp-mode .mode-name {
+    color: var(--text2);
+  }
+
+  .mode-btn .mode-desc {
+    font-size: 0.72rem;
+    color: var(--text2);
+    line-height: 1.4;
+  }
+
+  .mode-btn .mode-badge {
+    margin-left: auto;
+    font-size: 0.62rem;
+    padding: 0.15rem 0.5rem;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text2);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
   /* ========== HERO SELECT ========== */
   #screen-hero {
     flex-direction: column;
@@ -465,8 +569,6 @@
     flex-shrink: 0;
     position: relative;
     z-index: 10;
-    margin-top: -8px;
-    margin-bottom: -8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.5);
   }
   .portrait.targetable {
@@ -481,8 +583,15 @@
   }
 
   /* マナ */
-  .player-mana { display: flex; gap: 2px; flex-wrap: wrap; max-width: 70px; }
-  .mana-gem { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  .player-mana {
+    display: grid;
+    grid-template-columns: repeat(5, 9px);
+    grid-template-rows: repeat(2, 9px);
+    gap: 2px;
+    width: 57px;
+    flex-shrink: 0;
+  }
+  .mana-gem { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
   .mana-gem.empty { background: #1a2a4a; border: 1px solid var(--border); }
   .mana-text { color: var(--accent); font-weight: 700; font-size: 0.75rem; }
 
@@ -1146,8 +1255,31 @@
 </head>
 <body>
 
+<!-- ===== TITLE / MODE SELECT ===== -->
+<div id="screen-title" class="screen active">
+  <div class="title-logo">⚔ CARD DUEL</div>
+  <div class="title-sub">— CHOOSE YOUR BATTLE —</div>
+  <div class="mode-select-wrap">
+    <button class="mode-btn ai-mode" onclick="selectMode('ai')">
+      <span class="mode-icon">🤖</span>
+      <div class="mode-info">
+        <div class="mode-name">AI戦</div>
+        <div class="mode-desc">コンピュータ対戦。シジルを選び、デッキを組んで挑もう。</div>
+      </div>
+    </button>
+    <button class="mode-btn pvp-mode" disabled>
+      <span class="mode-icon">👥</span>
+      <div class="mode-info">
+        <div class="mode-name">対人戦</div>
+        <div class="mode-desc">別のプレイヤーと対戦する。</div>
+      </div>
+      <span class="mode-badge">準備中</span>
+    </button>
+  </div>
+</div>
+
 <!-- ===== HERO SELECT ===== -->
-<div id="screen-hero" class="screen active">
+<div id="screen-hero" class="screen">
   <h1>⚔ CARD DUEL</h1>
   <p>シジルを選択してください</p>
   <div class="hero-grid" id="hero-grid"></div>

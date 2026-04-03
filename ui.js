@@ -698,6 +698,14 @@ function copyExportText() {
   setTimeout(() => btn.textContent = 'コピー', 2000);
 }
 
+// ===== MODE SELECT =====
+function selectMode(mode) {
+  if (mode === 'ai') {
+    showScreen('hero');
+  }
+  // PvP: 将来実装予定
+}
+
 // ===== INIT EVENTS =====
 document.addEventListener('DOMContentLoaded', () => {
   // ゲームボタン
@@ -716,7 +724,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-sigil').onclick = useSigil;
   document.getElementById('btn-restart').onclick = () => {
     document.getElementById('game-overlay').classList.remove('active');
-    showScreen('hero');
+    showScreen('title');
   };
   // デッキ保存ボタン
   document.getElementById('btn-save-deck')?.addEventListener('click', saveCurrentDeck);
@@ -724,6 +732,5 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-delete-deck')?.addEventListener('click', deleteSelectedDeck);
   document.getElementById('btn-export-decks')?.addEventListener('click', exportDecks);
   document.getElementById('btn-import-decks')?.addEventListener('click', importDecks);
-  // 初期画面
-  initHeroSelect();
+  // 初期画面はタイトル（screen-titleがactive初期値）
 });
