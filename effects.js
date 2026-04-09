@@ -14,7 +14,7 @@ function onCardEnterField(pl, bc) {
       if (!pl.field.some(c => c.uid === uid)) return;
       pl.hp -= 1;
       drawCard(pl);
-      addLog(`${pl === G.player ? 'あなた' : 'AI'}はスーサイドロー：1点ダメージ＆1ドロー`, 'damage');
+      addLog(`${pl === G.player ? 'あなた' : 'AI'}はファウストの契約書：1点ダメージ＆1ドロー`, 'damage');
       checkHp(pl);
     }});
   }
@@ -102,7 +102,7 @@ function onCardEnterField(pl, bc) {
       const card = pl.field.find(c => c.uid === uid);
       if (!card || card.effect === '【無効化済み】') return;
       card.currentHp = Math.min(card.hp, card.currentHp + 2);
-      addLog(`回復エンジン発動：自身のHPを2回復`, 'heal');
+      addLog(`ヴァンパイア発動：自身のHPを2回復`, 'heal');
     }});
   }
   if (id === 'c67') { // 育成
