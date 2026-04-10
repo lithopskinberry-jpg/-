@@ -727,6 +727,9 @@ function needsTarget(card) {
     if (card.id === 'c78') { // 生命の冒涜：自分・相手どちらかにユニットがいれば対象選択
       return G.player.field.some(c => c.type === 'ユニット') || G.enemy.field.some(c => c.type === 'ユニット');
     }
+    if (card.id === 'c90') { // 鏡写し：自分・相手どちらかにユニットがいれば対象選択
+      return G.player.field.some(c => c.type === 'ユニット') || G.enemy.field.some(c => c.type === 'ユニット');
+    }
     // c72蒼波はターゲット不要（自動で左から処理）
     if (card.id === 'c69') return true; // 単体バフは自ユニット対象
     return needTarget.some(t => card.effect.includes(t)) || HEAL_SPELL_IDS.includes(card.id);
@@ -817,6 +820,22 @@ function executePlayCard(pl, handIdx, target) {
       G.targetingMode = null;
       clearTargetPrompt();
       cleanDeadUnits();
+      renderAll();
+      return;
+    }
+
+    // 対象必須カードで有効なtargetがない場合はキャンセル
+    const requiresUnitTarget = ['ユニット一体', '自ユニット一体', '敵ユニット一体', 'ユニット一体または陣地'].some(t => card.effect.includes(t));
+    const requiresFaceTarget = card.effect.includes('相手または') || card.effect.includes('プレイヤー一人');
+    const hasValidTarget = (target && target.card) || (target && target.type === 'face') || (target && target.type === 'ally') || (target && target.type === 'multi');
+    if ((requiresUnitTarget || requiresFaceTarget) && !hasValidTarget) {
+      pl.mana += effectiveCost(card);
+      pl.hand.splice(handIdx, 0, card);
+      G.phase = 'main';
+      G.selectedCard = null;
+      G.targetingMode = null;
+      clearTargetPrompt();
+      addLog(`「${card.name}」：対象を選択してください`, null);
       renderAll();
       return;
     }
@@ -1804,13 +1823,27 @@ function executeSigil(target) {
       addLog('シジル発動：治癒', 'heal');
       break;
     case 'buff':
-      if (target && target.card) { target.card.currentAtk++; }
+      if (!target || !target.card) {
+        G.player.mana += getSigilCost();
+        G.player.sigilUseCount--;
+        G.phase = 'main';
+        clearTargetPrompt();
+        renderAll();
+        return;
+      }
+      target.card.currentAtk++;
       addLog('シジル発動：鼓舞', 'heal');
       break;
     case 'debuff':
-      if (target && target.card) {
-        applyDebuffToUnit(target.card, -1, 0);
+      if (!target || !target.card) {
+        G.player.mana += getSigilCost();
+        G.player.sigilUseCount--;
+        G.phase = 'main';
+        clearTargetPrompt();
+        renderAll();
+        return;
       }
+      applyDebuffToUnit(target.card, -1, 0);
       addLog('シジル発動：衰弱', 'damage');
       break;
   }

@@ -113,7 +113,7 @@ function renderAll() {
       if (!hasGuard || attackerIsHidden) ePortrait.classList.add('targetable');
     } else if (G.phase === 'hero-targeting') {
       ePortrait.classList.add('targetable');
-      if (selectedSigil.id === 'heal') pPortrait.classList.add('targetable');
+      if ((G.player.sigil || selectedSigil).id === 'heal') pPortrait.classList.add('targetable');
     } else if (G.phase === 'targeting' && isHealSpell) {
       // Both portraits targetable for heal spells
       pPortrait.classList.add('targetable');
@@ -131,7 +131,7 @@ function renderAll() {
   };
 
   pPortrait.onclick = () => {
-    if (G.phase === 'hero-targeting' && selectedSigil.id === 'heal') onClickTarget({type:'ally'});
+    if (G.phase === 'hero-targeting' && (G.player.sigil || selectedSigil).id === 'heal') onClickTarget({type:'ally'});
     else if (G.phase === 'targeting') onClickTarget({type:'face', owner: 'player'});
   };
 }
@@ -198,7 +198,7 @@ function renderField(elId, field, isPlayer) {
             }
           }
           if (isPlayer && card.type === 'ユニット') {
-            if (eff.includes('自ユニット一体') || G.phase === 'hero-targeting' || G.targetingMode?.card?.id === 'c69') {
+            if (eff.includes('自ユニット一体') || G.phase === 'hero-targeting' || G.targetingMode?.card?.id === 'c69' || G.targetingMode?.card?.id === 'c90') {
               cardEl.classList.add('targetable');
               cardEl.onclick = () => onClickTarget({type:'unit', card, isAlly: true});
             }
