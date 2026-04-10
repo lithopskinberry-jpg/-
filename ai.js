@@ -36,14 +36,17 @@ function aiAct() {
     // Easy AI：相手フィールドにアラクネがいるとき、HP2以下のユニットは召喚しない
     const playerHasArakne = player.field.some(c => c.id === 'c92' && c.effect !== '【無効化済み】');
 
-    // 実際に使えるカード（スペルはターゲットが存在するもの）を先頭から探す
-    const pick = playable.find(({c: nc}) => {
+    // 実際に使えるカード（スペルはターゲットが存在するもの・今ターンスキップ済みを除く）を先頭から探す
+    const skipSet = G.aiSkipCards || new Set();
+    const pick = playable.find(({c: nc, i: ni}) => {
+      if (skipSet.has(ni)) return false;
       if (nc.type !== 'スペル') return true;
       return getAISpellTarget(nc, ai, player) !== null;
     });
 
     // アラクネ対応フィルタ（Easy：HP3以上のユニットは通常通り出す、HP2以下はスキップ）
-    const pickFiltered = playable.find(({c: nc}) => {
+    const pickFiltered = playable.find(({c: nc, i: ni}) => {
+      if (skipSet.has(ni)) return false;
       if (playerHasArakne && nc.type === 'ユニット' && nc.hp <= 2) return false;
       if (nc.type !== 'スペル') return true;
       return getAISpellTarget(nc, ai, player) !== null;
@@ -56,6 +59,20 @@ function aiAct() {
       let target = null;
       if (c.type === 'スペル') {
         target = getAISpellTarget(c, ai, player);
+        if (target === null) {
+          // 対象なし：このカードはパス（手札に残す）して再度プレイ選定へ
+          G.aiSkipCards = G.aiSkipCards || new Set();
+          G.aiSkipCards.add(i);
+          if (!G.gameOver) setTimeout(aiAct, 200);
+          return;
+        }
+      } else if (c.id === 'c82') { // ウィリー・ウィンキー：プレイヤーユニット2体を睡眠
+        const targets82 = player.field.filter(u => u.type === 'ユニット').sort((a,b) => b.currentAtk - a.currentAtk);
+        if (targets82.length >= 2) {
+          target = { type:'multi', targets: [{card: targets82[0]}, {card: targets82[1]}] };
+        } else if (targets82.length === 1) {
+          target = { type:'unit', card: targets82[0] };
+        }
       } else if (c.type === 'ユニット' && c.trigger === '登場時' && c.effect.includes('相手')) {
         target = {type: 'face'};
       } else if (c.type === 'ユニット' && c.trigger === '登場時' && c.effect.includes('敵ユニット一体')) {
@@ -194,6 +211,10 @@ function getAISpellTarget(card, ai, player) {
       const t90 = player.field.filter(c => c.type === 'ユニット' && c.currentHp > c.currentAtk)
         .sort((a, b) => (b.currentHp - b.currentAtk) - (a.currentHp - a.currentAtk))[0];
       return t90 ? {type:'unit', card:t90} : null;
+    }
+    case 'c69': { // 風精の追い風：自ユニットにバフ。いなければパス
+      const strongest = ai.field.filter(c => c.type === 'ユニット').sort((a,b) => b.currentAtk - a.currentAtk)[0];
+      return strongest ? { type:'unit', card: strongest, isAlly: true } : null;
     }
     // c62: ジャーンの書はターゲット不要（AI処理はapplySpell内で完結）
     default: return {type:'face'};
@@ -337,9 +358,10 @@ function aiNormalPickCard(ai, player) {
     return playable[0] || null;
   }
 
+  const skipSetN = G.aiSkipCards || new Set();
   const playable = ai.hand
     .map((c, i) => ({c, i, val: aiCardValue(c, ai, player)}))
-    .filter(({c}) => effectiveCost(c) <= ai.mana && !(fieldFull && (c.type === 'ユニット' || c.type === '陣地')))
+    .filter(({c, i}) => !skipSetN.has(i) && effectiveCost(c) <= ai.mana && !(fieldFull && (c.type === 'ユニット' || c.type === '陣地')))
     .sort((a, b) => b.val - a.val);
   return playable[0] || null;
 }
@@ -396,6 +418,20 @@ function aiActNormal() {
     if (!target) {
       if (c.type === 'スペル') {
         target = getAINormalSpellTarget(c, ai, player);
+        if (target === null) {
+          // 対象なし：このカードはパス（手札に残す）して再度プレイ選定へ
+          G.aiSkipCards = G.aiSkipCards || new Set();
+          G.aiSkipCards.add(i);
+          if (!G.gameOver) setTimeout(aiActNormal, 200);
+          return;
+        }
+      } else if (c.id === 'c82') { // ウィリー・ウィンキー：ATK高い順にプレイヤーユニット2体を睡眠
+        const targets82 = player.field.filter(u => u.type === 'ユニット').sort((a,b) => b.currentAtk - a.currentAtk);
+        if (targets82.length >= 2) {
+          target = { type:'multi', targets: [{card: targets82[0]}, {card: targets82[1]}] };
+        } else if (targets82.length === 1) {
+          target = { type:'unit', card: targets82[0] };
+        }
       } else if (c.type === 'ユニット' && c.trigger === '登場時' && c.effect.includes('相手')) {
         target = { type:'face' };
       } else if (c.type === 'ユニット' && c.trigger === '登場時' && c.effect.includes('敵ユニット一体')) {
