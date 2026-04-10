@@ -522,6 +522,9 @@ function startTurn() {
   const oppForSOT = G.isPlayerTurn ? G.enemy : G.player;
   triggerOppStartOfTurn(oppForSOT);
 
+  // AIのターンスキップリストをリセット
+  G.aiSkipCards = new Set();
+
   if (G.isPlayerTurn) {
     addLog('--- あなたのターン ' + G.turn + ' ---', 'important');
     document.getElementById('btn-end-turn').disabled = false;
@@ -936,8 +939,8 @@ function applyBattlecry(pl, bc, card, target, isPlayer) {
         c82targets.push(target);
       }
       if (c82targets.length === 0) {
-        // フォールバック：敵ユニット全体から最大2体
-        const enemies = G.enemy.field.filter(c => c.type === 'ユニット');
+        // フォールバック：召喚者の相手フィールドから最大2体（ATK高い順）
+        const enemies = opp.field.filter(c => c.type === 'ユニット').sort((a,b) => b.currentAtk - a.currentAtk);
         enemies.slice(0, 2).forEach(u => c82targets.push({card: u}));
       }
       c82targets.forEach(t => {
