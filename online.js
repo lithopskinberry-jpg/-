@@ -5,14 +5,6 @@
 // ★ここにFirebaseの設定を貼り付けてください★
 // ========================================
 const firebaseConfig = {
-<script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  const firebaseConfig = {
     apiKey: "AIzaSyAgq6dOapRkf9-NGL0V5Ib7X212I1P1VVE",
     authDomain: "bouzumekuri-online.firebaseapp.com",
     databaseURL: "https://bouzumekuri-online-default-rtdb.asia-southeast1.firebasedatabase.app",
