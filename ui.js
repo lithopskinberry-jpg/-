@@ -702,8 +702,9 @@ function copyExportText() {
 function selectMode(mode) {
   if (mode === 'ai') {
     showScreen('hero');
+  } else if (mode === 'online') {
+    showScreen('lobby');
   }
-  // PvP: 将来実装予定
 }
 
 // ===== INIT EVENTS =====
