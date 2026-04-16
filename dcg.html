@@ -1272,15 +1272,82 @@
         <div class="mode-desc">コンピュータ対戦。シジルを選び、デッキを組んで挑もう。</div>
       </div>
     </button>
-    <button class="mode-btn pvp-mode" disabled>
+    <button class="mode-btn pvp-mode" onclick="selectMode('online')">
       <span class="mode-icon">👥</span>
       <div class="mode-info">
         <div class="mode-name">対人戦</div>
-        <div class="mode-desc">別のプレイヤーと対戦する。</div>
+        <div class="mode-desc">ルームを作成して友人と対戦しよう。</div>
       </div>
-      <span class="mode-badge">準備中</span>
     </button>
   </div>
+</div>
+
+<!-- ===== ONLINE LOBBY ===== -->
+<div id="screen-lobby" class="screen" style="flex-direction:column;align-items:center;justify-content:center;gap:1.2rem;padding:1.5rem;">
+  <h2 style="font-family:'Cinzel',serif;color:var(--gold);font-size:1.4rem;letter-spacing:0.08em;">🌐 オンライン対戦</h2>
+
+  <!-- 名前入力 -->
+  <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:0.5rem;">
+    <label style="color:var(--text2);font-size:0.8rem;">プレイヤー名</label>
+    <input id="lobby-name-input" type="text" maxlength="12" placeholder="名前を入力（最大12文字）"
+      style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:0.55rem 0.8rem;font-size:0.9rem;">
+  </div>
+
+  <!-- ルーム作成 -->
+  <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:0.5rem;">
+    <button id="btn-create-room" onclick="createRoom()"
+      style="width:100%;padding:0.75rem;background:linear-gradient(135deg,#2a4a9a,#4a9eff);border:none;border-radius:8px;color:white;font-family:'Cinzel',serif;font-size:0.95rem;cursor:pointer;letter-spacing:0.05em;">
+      ＋ ルームを作成
+    </button>
+  </div>
+
+  <!-- 区切り -->
+  <div style="display:flex;align-items:center;gap:0.8rem;width:100%;max-width:320px;">
+    <div style="flex:1;height:1px;background:var(--border);"></div>
+    <span style="color:var(--text2);font-size:0.8rem;">または</span>
+    <div style="flex:1;height:1px;background:var(--border);"></div>
+  </div>
+
+  <!-- ルーム参加 -->
+  <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:0.5rem;">
+    <label style="color:var(--text2);font-size:0.8rem;">ルームIDで参加</label>
+    <div style="display:flex;gap:0.5rem;">
+      <input id="lobby-room-id-input" type="text" maxlength="6" placeholder="ルームID（6文字）"
+        style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:0.55rem 0.8rem;font-size:0.9rem;text-transform:uppercase;letter-spacing:0.1em;">
+      <button id="btn-join-room" onclick="joinRoom()"
+        style="padding:0.55rem 1rem;background:var(--bg3);border:1px solid var(--accent);border-radius:6px;color:var(--accent);font-size:0.9rem;cursor:pointer;white-space:nowrap;">
+        参加
+      </button>
+    </div>
+  </div>
+
+  <!-- ルームID表示（作成後に表示） -->
+  <div id="lobby-room-id-wrap" style="display:none;width:100%;max-width:320px;text-align:center;background:var(--bg3);border:1px solid var(--gold);border-radius:8px;padding:0.8rem;">
+    <div style="color:var(--text2);font-size:0.75rem;margin-bottom:0.3rem;">ルームID（相手に伝えてください）</div>
+    <div id="lobby-room-id-display" style="color:var(--gold);font-family:'Cinzel',serif;font-size:2rem;letter-spacing:0.2em;font-weight:700;"></div>
+  </div>
+
+  <!-- ステータスメッセージ -->
+  <div id="lobby-status" style="color:var(--text2);font-size:0.85rem;text-align:center;min-height:1.5em;"></div>
+
+  <!-- デッキ選択（マッチング後に表示） -->
+  <div id="lobby-deck-select-wrap" style="display:none;width:100%;max-width:320px;display:none;flex-direction:column;gap:0.6rem;">
+    <label style="color:var(--text2);font-size:0.8rem;">使用デッキを選択</label>
+    <select id="online-deck-select"
+      style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:0.55rem 0.8rem;font-size:0.9rem;">
+      <option value="">── デッキを選択 ──</option>
+    </select>
+    <button onclick="confirmOnlineDeck()"
+      style="width:100%;padding:0.75rem;background:linear-gradient(135deg,#1a5a2a,#2ecc71);border:none;border-radius:8px;color:white;font-family:'Cinzel',serif;font-size:0.95rem;cursor:pointer;">
+      デッキを確定してヒーロー選択へ →
+    </button>
+  </div>
+
+  <!-- 戻るボタン -->
+  <button onclick="showScreen('title')"
+    style="margin-top:0.5rem;padding:0.4rem 1.2rem;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text2);font-size:0.8rem;cursor:pointer;">
+    ← タイトルに戻る
+  </button>
 </div>
 
 <!-- ===== HERO SELECT ===== -->
@@ -1467,11 +1534,16 @@
 <div class="tooltip" id="tooltip"></div>
 
 
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
 <script src="cards.js"></script>
 <script src="core.js"></script>
 <script src="effects.js"></script>
 <script src="ai.js"></script>
 <script src="ui.js"></script>
+<script src="online.js"></script>
 
 
 <!-- ===== EXPORT MODAL ===== -->
