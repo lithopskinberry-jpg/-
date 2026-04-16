@@ -14,15 +14,6 @@ const firebaseConfig = {
     appId: "1:703927927532:web:af9c273d1064e9b5b4dbc9"
   };
 
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  authDomain: "YOUR_AUTH_DOMAIN",
-  databaseURL: "YOUR_DATABASE_URL",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
 // ========================================
 
 // Firebase初期化
