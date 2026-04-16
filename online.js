@@ -2,8 +2,7 @@
 // Firebase Realtime Database を使ったオンライン対戦管理
 
 // ========================================
-// ★ここにFirebaseの設定を貼り付けてください★
-// ========================================
+
 const firebaseConfig = {
     apiKey: "AIzaSyAgq6dOapRkf9-NGL0V5Ib7X212I1P1VVE",
     authDomain: "bouzumekuri-online.firebaseapp.com",
@@ -12,8 +11,7 @@ const firebaseConfig = {
     storageBucket: "bouzumekuri-online.firebasestorage.app",
     messagingSenderId: "703927927532",
     appId: "1:703927927532:web:af9c273d1064e9b5b4dbc9"
-  };
-
+};
 // ========================================
 
 // Firebase初期化
@@ -151,7 +149,12 @@ function refreshOnlineDeckSelect() {
   if (!sel) return;
   const decks = storageLoadDecks();
   sel.innerHTML = '<option value="">── デッキを選択 ──</option>';
-  Object.keys(decks).forEach(name => {
+  const deckNames = Object.keys(decks);
+  if (deckNames.length === 0) {
+    setLobbyStatus('保存済みデッキがありません。先にAI戦でデッキを保存してください。', 'var(--red)');
+    return;
+  }
+  deckNames.forEach(name => {
     const opt = document.createElement('option');
     opt.value = name;
     opt.textContent = name;
