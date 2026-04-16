@@ -31,12 +31,28 @@ function initHeroSelect() {
   // シジル未選択でも進めるよう、ボタンは常に有効
   const btn = document.getElementById('btn-to-deck');
   btn.disabled = false;
-  btn.onclick = () => showScreen('deck');
+
+  if (Online.roomId) {
+    // オンラインモード：デッキ構築スキップ、ヒーロー確定して待機
+    btn.textContent = 'このシジルで対戦開始 →';
+    btn.onclick = () => {
+      const heroId = selectedSigil ? selectedSigil.id : SIGIL_LIST[0].id;
+      btn.disabled = true;
+      btn.textContent = '相手の準備を待っています...';
+      showScreen('lobby');
+      onlineReadyToStart(heroId);
+    };
+  } else {
+    // AI戦：通常通りデッキ構築へ
+    btn.textContent = 'デッキ構築へ →';
+    btn.onclick = () => showScreen('deck');
+  }
 }
 
 // ===== DECK BUILD =====
 function initDeckBuild() {
-  playerDeck = [];
+  // オンラインモードではデッキ選択済みなのでリセットしない
+  if (!Online.roomId) playerDeck = [];
   renderFilterBar();
   renderCardPool();
   renderDeckList();
