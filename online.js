@@ -2,7 +2,8 @@
 // Firebase Realtime Database を使ったオンライン対戦管理
 
 // ========================================
-
+// ★ここにFirebaseの設定を貼り付けてください★
+// ========================================
 const firebaseConfig = {
     apiKey: "AIzaSyAgq6dOapRkf9-NGL0V5Ib7X212I1P1VVE",
     authDomain: "bouzumekuri-online.firebaseapp.com",
@@ -132,59 +133,14 @@ function waitForGuest(roomId) {
   });
 }
 
-// ===== マッチング完了 → デッキ選択画面へ =====
+// ===== マッチング完了 → デッキ構築画面へ =====
 function onMatched() {
   setLobbyStatus(
-    `対戦相手: ${Online.opponentName}　デッキを選んでください`,
+    `対戦相手: ${Online.opponentName}　デッキを構築してください`,
     'var(--gold)'
   );
-  // デッキ選択UIを表示
-  document.getElementById('lobby-deck-select-wrap').style.display = 'block';
-  refreshOnlineDeckSelect();
-}
-
-// ===== オンライン用デッキ選択セレクトボックスを更新 =====
-function refreshOnlineDeckSelect() {
-  const sel = document.getElementById('online-deck-select');
-  if (!sel) return;
-  const decks = storageLoadDecks();
-  sel.innerHTML = '<option value="">── デッキを選択 ──</option>';
-  const deckNames = Object.keys(decks);
-  if (deckNames.length === 0) {
-    setLobbyStatus('保存済みデッキがありません。先にAI戦でデッキを保存してください。', 'var(--red)');
-    return;
-  }
-  deckNames.forEach(name => {
-    const opt = document.createElement('option');
-    opt.value = name;
-    opt.textContent = name;
-    sel.appendChild(opt);
-  });
-}
-
-// ===== デッキ確定 → ヒーロー選択へ =====
-function confirmOnlineDeck() {
-  const sel = document.getElementById('online-deck-select');
-  const deckName = sel ? sel.value : '';
-  if (!deckName) { setLobbyStatus('デッキを選んでください', 'var(--red)'); return; }
-
-  const decks = storageLoadDecks();
-  const ids = decks[deckName];
-  if (!ids) return;
-
-  // playerDeckにセット（既存のcore.jsと共有）
-  playerDeck = [];
-  ids.forEach(id => {
-    const card = ALL_CARDS.find(c => c.id === id);
-    if (card) playerDeck.push({...card, uid: Math.random()});
-  });
-
-  // ヒーロー選択画面へ（既存の流れを使う）
-  // ヒーロー選択後に online_startGame() を呼ぶ
-  Online.selectedDeckName = deckName;
-  showScreen('hero');
-  // ヒーロー選択画面に「オンライン対戦開始」ボタンを表示するフラグ
-  Online.waitingHeroSelect = true;
+  // 少し間を置いてデッキ構築画面へ遷移
+  setTimeout(() => showScreen('deck'), 1200);
 }
 
 // ===== ヒーロー選択完了 → ゲーム開始シグナルをDBに送る =====
