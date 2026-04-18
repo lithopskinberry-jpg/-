@@ -1330,19 +1330,6 @@
   <!-- ステータスメッセージ -->
   <div id="lobby-status" style="color:var(--text2);font-size:0.85rem;text-align:center;min-height:1.5em;"></div>
 
-  <!-- デッキ選択（マッチング後に表示） -->
-  <div id="lobby-deck-select-wrap" style="display:none;width:100%;max-width:320px;display:none;flex-direction:column;gap:0.6rem;">
-    <label style="color:var(--text2);font-size:0.8rem;">使用デッキを選択</label>
-    <select id="online-deck-select"
-      style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:0.55rem 0.8rem;font-size:0.9rem;">
-      <option value="">── デッキを選択 ──</option>
-    </select>
-    <button onclick="confirmOnlineDeck()"
-      style="width:100%;padding:0.75rem;background:linear-gradient(135deg,#1a5a2a,#2ecc71);border:none;border-radius:8px;color:white;font-family:'Cinzel',serif;font-size:0.95rem;cursor:pointer;">
-      デッキを確定してヒーロー選択へ →
-    </button>
-  </div>
-
   <!-- 戻るボタン -->
   <button onclick="showScreen('title')"
     style="margin-top:0.5rem;padding:0.4rem 1.2rem;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text2);font-size:0.8rem;cursor:pointer;">

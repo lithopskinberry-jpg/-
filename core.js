@@ -31,27 +31,12 @@ function initHeroSelect() {
   // シジル未選択でも進めるよう、ボタンは常に有効
   const btn = document.getElementById('btn-to-deck');
   btn.disabled = false;
-
-  if (Online.roomId) {
-    // オンラインモード：デッキ構築スキップ、ヒーロー確定して待機
-    btn.textContent = 'このシジルで対戦開始 →';
-    btn.onclick = () => {
-      const heroId = selectedSigil ? selectedSigil.id : SIGIL_LIST[0].id;
-      btn.disabled = true;
-      btn.textContent = '相手の準備を待っています...';
-      showScreen('lobby');
-      onlineReadyToStart(heroId);
-    };
-  } else {
-    // AI戦：通常通りデッキ構築へ
-    btn.textContent = 'デッキ構築へ →';
-    btn.onclick = () => showScreen('deck');
-  }
+  btn.onclick = () => showScreen('deck');
 }
 
 // ===== DECK BUILD =====
 function initDeckBuild() {
-  // オンラインモードではデッキ選択済みなのでリセットしない
+  // オンラインモードではデッキをリセットしない
   if (!Online.roomId) playerDeck = [];
   renderFilterBar();
   renderCardPool();
@@ -61,7 +46,23 @@ function initDeckBuild() {
 
   refreshSavedDeckSelect();
   document.getElementById('btn-auto-deck').onclick = autoDeck;
-  document.getElementById('btn-start-game').onclick = startGame;
+
+  // オンラインとAI戦でゲーム開始ボタンの動作を分岐
+  const startBtn = document.getElementById('btn-start-game');
+  if (Online.roomId) {
+    startBtn.textContent = 'このデッキで対戦開始';
+    startBtn.onclick = () => {
+      if (playerDeck.length !== 30) { alert('30枚のデッキが必要です'); return; }
+      startBtn.disabled = true;
+      startBtn.textContent = '相手の準備を待っています...';
+      const heroId = selectedSigil ? selectedSigil.id : SIGIL_LIST[0].id;
+      showScreen('lobby');
+      onlineReadyToStart(heroId);
+    };
+  } else {
+    startBtn.textContent = 'ゲーム開始';
+    startBtn.onclick = startGame;
+  }
 }
 
 function renderSigilTabs() {
