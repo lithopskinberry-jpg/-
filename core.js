@@ -492,6 +492,13 @@ function endMulligan() {
   G._mulliganDetailIdx = null;
   document.getElementById('modal-mulligan').style.display = 'none';
   showScreen('game');
+
+  // オンライン時はマリガン完了をDBに通知し、両者揃うまで待機
+  if (G.onlineMode) {
+    onlineMulliganDone();
+    return;
+  }
+
   startTurn();
 }
 
@@ -545,6 +552,11 @@ function startTurn() {
   if (G.isPlayerTurn) {
     addLog('--- あなたのターン ' + G.turn + ' ---', 'important');
     document.getElementById('btn-end-turn').disabled = false;
+    renderAll();
+  } else if (G.onlineMode) {
+    // オンライン：相手のターンはAIを呼ばず待機
+    addLog('--- 相手のターン ' + G.turn + ' ---', 'important');
+    document.getElementById('btn-end-turn').disabled = true;
     renderAll();
   } else {
     addLog('--- AIのターン ' + G.turn + ' ---', 'important');
@@ -883,6 +895,27 @@ function executePlayCard(pl, handIdx, target) {
   cleanDeadUnits();
   checkHp(pl === G.player ? G.enemy : G.player);
   checkHp(pl);
+
+  // オンライン：自分のカードプレイを相手に送信
+  if (G.onlineMode && pl === G.player) {
+    const actionObj = {
+      type: 'play-card',
+      cardId: card.id,
+    };
+    // ターゲット情報をシリアライズ
+    if (target) {
+      if (target.type === 'face')       { actionObj.targetType = 'face'; }
+      else if (target.type === 'ally')  { actionObj.targetType = 'ally-face'; }
+      else if (target.type === 'unit' && target.card)   { actionObj.targetType = 'unit';  actionObj.targetUid = target.card.uid; }
+      else if (target.type === 'shrine' && target.card) { actionObj.targetType = 'shrine'; actionObj.targetUid = target.card.uid; }
+      else if (target.type === 'multi' && target.targets) {
+        actionObj.targetType = 'multi';
+        actionObj.targetUids = target.targets.map(t => t.card?.uid).filter(Boolean);
+      }
+    }
+    sendAction(actionObj);
+  }
+
   if (!G.gameOver) renderAll();
 }
 
@@ -1664,6 +1697,17 @@ function playerAttackTarget(target) {
   const defCard = target.type === 'unit' ? target.card : null;
   const attackerUid = attacker.uid;
 
+  // オンライン：攻撃を相手に送信
+  if (G.onlineMode) {
+    const actionObj = {
+      type: 'attack',
+      attackerUid: attackerUid,
+      targetType: target.type === 'face' ? 'face' : 'unit',
+    };
+    if (defCard) actionObj.targetUid = defCard.uid;
+    sendAction(actionObj);
+  }
+
   // 攻撃アニメーション
   animAttack(attacker, true).then(() => {
     executeAttack(G.player, attacker, opp, target);
@@ -1872,6 +1916,21 @@ function executeSigil(target) {
   clearTargetPrompt();
   cleanDeadUnits();
   checkHp(G.enemy);
+
+  // オンライン：シジル使用を相手に送信
+  if (G.onlineMode) {
+    const actionObj = {
+      type: 'use-sigil',
+      sigilId: hp.id,
+    };
+    if (target) {
+      if (target.type === 'face')      { actionObj.targetType = 'face'; }
+      else if (target.type === 'ally') { actionObj.targetType = 'ally-face'; }
+      else if (target.card)            { actionObj.targetType = 'unit'; actionObj.targetUid = target.card.uid; }
+    }
+    sendAction(actionObj);
+  }
+
   if (!G.gameOver) renderAll();
 }
 

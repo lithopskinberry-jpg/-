@@ -338,7 +338,6 @@ function endTurn() {
   if (G.gameOver) return;
   if (G.phase === 'discard') { addLog('捨てるカードを選んでください', null); return; }
   triggerEndOfTurn(G.player);
-  // プレイヤーターン終了時 = AIにとっての「相手ターン終了時」
   triggerOppEndOfTurn(G.enemy);
   cleanDeadUnits();
   checkHp(G.player);
@@ -347,6 +346,20 @@ function endTurn() {
 
   G.selectedCard = null;
   G.phase = 'main';
+
+  // ===== オンラインモード =====
+  if (G.onlineMode) {
+    // ターン終了を相手に送信
+    sendAction({ type: 'end-turn' });
+    // 自分のターンを終了し、相手のターンを待つ状態に
+    G.isPlayerTurn = false;
+    document.getElementById('btn-end-turn').disabled = true;
+    addLog('--- 相手のターン ---', 'important');
+    renderAll();
+    return; // startTurn()は呼ばない（相手のend-turnを受信したら自動で再開）
+  }
+
+  // ===== AIモード（従来通り） =====
   G.isPlayerTurn = !G.isPlayerTurn;
   renderAll();
   startTurn();
