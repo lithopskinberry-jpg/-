@@ -880,6 +880,17 @@
   }
   .ctrl-end-turn:hover    { filter: brightness(1.2); }
   .ctrl-end-turn:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
+  .ctrl-surrender {
+    padding: 0.35rem 0.9rem;
+    background: linear-gradient(135deg, #4a1a1a, #cc2e2e);
+    border: none; border-radius: 5px;
+    color: white; cursor: pointer;
+    font-weight: 700; font-size: 0.78rem;
+    white-space: nowrap; flex-shrink: 0;
+    transition: all 0.2s;
+    display: none;
+  }
+  .ctrl-surrender:hover { filter: brightness(1.2); }
 
   /* カード確認バー */
   .card-confirm-bar {
@@ -1476,6 +1487,7 @@
     <div class="ctrl-status" id="ctrl-status">カードを選択</div>
     <button id="btn-confirm-multi" style="display:none;padding:0.4rem 0.7rem;background:var(--accent);border:none;border-radius:5px;color:#fff;cursor:pointer;font-size:0.75rem;font-weight:700;white-space:nowrap;flex-shrink:0;">決定</button>
     <button id="btn-cancel-target" style="display:none;padding:0.4rem 0.7rem;background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text2);cursor:pointer;font-size:0.75rem;white-space:nowrap;flex-shrink:0;">✕</button>
+    <button class="ctrl-surrender" id="btn-surrender" onclick="surrender()">投了</button>
     <button class="ctrl-end-turn" id="btn-end-turn">ターン終了</button>
   </div>
 

@@ -231,6 +231,8 @@ async function onlineMulliganDone() {
 
 // ===== 両者マリガン完了 → ゲーム本開始 =====
 function onBothMulliganDone() {
+  // 投了ボタンを表示（オンライン対戦中のみ）
+  document.getElementById('btn-surrender').style.display = 'block';
   addLog('🌐 オンライン対戦開始！', 'system');
   addLog(`あなた: ${Online.myName}　相手: ${Online.opponentName}`, 'system');
   addLog(Online.isFirstPlayer ? 'あなたが先攻です' : '相手が先攻です', 'system');
@@ -426,6 +428,9 @@ function cleanupOnline() {
   Online.listeners.forEach(({ ref, listener, event }) => ref.off(event, listener));
   Online.listeners = [];
   if (Online.myRole === 'host' && Online.roomId) db.ref(`rooms/${Online.roomId}`).remove();
+  // 投了ボタンを非表示に戻す
+  const btn = document.getElementById('btn-surrender');
+  if (btn) btn.style.display = 'none';
   Object.assign(Online, {
     roomId: null, myRole: null, myName: null, opponentName: null,
     opponentHeroId: null, opponentDeck: [], isFirstPlayer: false, isReady: false,

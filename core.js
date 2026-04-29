@@ -900,17 +900,37 @@ function executePlayCard(pl, handIdx, target) {
   if (G.onlineMode && pl === G.player) {
     const actionObj = {
       type: 'play-card',
-      cardId: card.id,
+      handIdx: handIdx, // 手札の何枚目か（受信側はG.enemy.hand[handIdx]で取得）
     };
-    // ターゲット情報をシリアライズ
+    // ターゲット情報：uidではなくフィールドインデックスで送る
     if (target) {
-      if (target.type === 'face')       { actionObj.targetType = 'face'; }
-      else if (target.type === 'ally')  { actionObj.targetType = 'ally-face'; }
-      else if (target.type === 'unit' && target.card)   { actionObj.targetType = 'unit';  actionObj.targetUid = target.card.uid; }
-      else if (target.type === 'shrine' && target.card) { actionObj.targetType = 'shrine'; actionObj.targetUid = target.card.uid; }
-      else if (target.type === 'multi' && target.targets) {
+      if (target.type === 'face') {
+        actionObj.targetType = 'face';
+      } else if (target.type === 'ally') {
+        actionObj.targetType = 'ally-face';
+      } else if (target.type === 'unit' && target.card) {
+        actionObj.targetType = 'unit';
+        // 自分フィールド（相手から見て敵）か、相手フィールド（自分から見て敵）か
+        const pIdx = G.player.field.indexOf(target.card);
+        const eIdx = G.enemy.field.indexOf(target.card);
+        if (pIdx !== -1) { actionObj.targetSide = 'player'; actionObj.targetIdx = pIdx; }
+        else if (eIdx !== -1) { actionObj.targetSide = 'enemy'; actionObj.targetIdx = eIdx; }
+      } else if (target.type === 'shrine' && target.card) {
+        actionObj.targetType = 'shrine';
+        const pIdx = G.player.field.indexOf(target.card);
+        const eIdx = G.enemy.field.indexOf(target.card);
+        if (pIdx !== -1) { actionObj.targetSide = 'player'; actionObj.targetIdx = pIdx; }
+        else if (eIdx !== -1) { actionObj.targetSide = 'enemy'; actionObj.targetIdx = eIdx; }
+      } else if (target.type === 'multi' && target.targets) {
         actionObj.targetType = 'multi';
-        actionObj.targetUids = target.targets.map(t => t.card?.uid).filter(Boolean);
+        actionObj.targetIdxs = target.targets.map(t => {
+          if (!t.card) return null;
+          const pIdx = G.player.field.indexOf(t.card);
+          const eIdx = G.enemy.field.indexOf(t.card);
+          if (pIdx !== -1) return { side: 'player', idx: pIdx };
+          if (eIdx !== -1) return { side: 'enemy', idx: eIdx };
+          return null;
+        }).filter(Boolean);
       }
     }
     sendAction(actionObj);
@@ -1697,14 +1717,15 @@ function playerAttackTarget(target) {
   const defCard = target.type === 'unit' ? target.card : null;
   const attackerUid = attacker.uid;
 
-  // オンライン：攻撃を相手に送信
+  // オンライン：攻撃を相手に送信（インデックスで送る）
   if (G.onlineMode) {
+    const attackerIdx = G.player.field.indexOf(attacker);
     const actionObj = {
       type: 'attack',
-      attackerUid: attackerUid,
+      attackerIdx: attackerIdx,
       targetType: target.type === 'face' ? 'face' : 'unit',
     };
-    if (defCard) actionObj.targetUid = defCard.uid;
+    if (defCard) actionObj.targetIdx = G.enemy.field.indexOf(defCard);
     sendAction(actionObj);
   }
 
@@ -1924,9 +1945,17 @@ function executeSigil(target) {
       sigilId: hp.id,
     };
     if (target) {
-      if (target.type === 'face')      { actionObj.targetType = 'face'; }
-      else if (target.type === 'ally') { actionObj.targetType = 'ally-face'; }
-      else if (target.card)            { actionObj.targetType = 'unit'; actionObj.targetUid = target.card.uid; }
+      if (target.type === 'face') {
+        actionObj.targetType = 'face';
+      } else if (target.type === 'ally') {
+        actionObj.targetType = 'ally-face';
+      } else if (target.card) {
+        actionObj.targetType = 'unit';
+        const pIdx = G.player.field.indexOf(target.card);
+        const eIdx = G.enemy.field.indexOf(target.card);
+        if (pIdx !== -1) { actionObj.targetSide = 'player'; actionObj.targetIdx = pIdx; }
+        else if (eIdx !== -1) { actionObj.targetSide = 'enemy'; actionObj.targetIdx = eIdx; }
+      }
     }
     sendAction(actionObj);
   }
