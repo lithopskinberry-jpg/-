@@ -296,9 +296,9 @@ function applyRemoteEndTurn() {
 
 // ===== リモート：カードプレイ =====
 function applyRemotePlayCard(action) {
-  const handIdx = G.enemy.hand.findIndex(c => c.id === action.cardId);
-  if (handIdx === -1) {
-    addLog(`[同期エラー] 相手の手札に ${action.cardId} が見つかりません`, 'damage');
+  const handIdx = action.handIdx;
+  if (handIdx === undefined || handIdx < 0 || handIdx >= G.enemy.hand.length) {
+    addLog(`[同期エラー] 相手の手札インデックス ${handIdx} が無効です`, 'damage');
     return;
   }
 
@@ -309,14 +309,15 @@ function applyRemotePlayCard(action) {
 
 // ===== リモート：攻撃 =====
 function applyRemoteAttack(action) {
-  const attacker = G.enemy.field.find(c => c.uid === action.attackerUid);
+  const attacker = G.enemy.field[action.attackerIdx];
   if (!attacker) { addLog('[同期エラー] 攻撃者が見つかりません', 'damage'); return; }
 
   let target = null;
   if (action.targetType === 'face') {
     target = { type: 'face' };
   } else if (action.targetType === 'unit') {
-    const card = G.player.field.find(c => c.uid === action.targetUid);
+    // 送信側: G.enemy.field[targetIdx] = 受信側: G.player.field[targetIdx]
+    const card = G.player.field[action.targetIdx];
     if (card) target = { type: 'unit', card };
   }
   if (!target) return;
@@ -377,13 +378,18 @@ function applyRemoteSigilEffect(pl, target, sigilId) {
   checkHp(G.player); checkHp(G.enemy);
 }
 
-// ===== ターゲット情報を uid から実オブジェクトに復元 =====
+// ===== ターゲット情報をインデックスから実オブジェクトに復元 =====
+// 視点の注意：送信側の G.player = 受信側の G.enemy、送信側の G.enemy = 受信側の G.player
 function resolveRemoteTarget(action) {
   if (!action.targetType) return null;
 
-  const findByUid = (uid) =>
-    G.player.field.find(c => c.uid === uid) ||
-    G.enemy.field.find(c => c.uid === uid);
+  // side: 送信側（相手）視点での 'player'/'enemy'
+  // → 受信側では 'player' が G.enemy、'enemy' が G.player
+  const getCard = (side, idx) => {
+    if (side === 'player') return G.enemy.field[idx];   // 送信側のplayer = 受信側のenemy
+    if (side === 'enemy')  return G.player.field[idx];  // 送信側のenemy  = 受信側のplayer
+    return null;
+  };
 
   switch (action.targetType) {
     case 'face':
@@ -391,18 +397,22 @@ function resolveRemoteTarget(action) {
     case 'ally-face':
       return { type: 'ally', isAlly: true };
     case 'unit': {
-      const card = findByUid(action.targetUid);
+      const card = getCard(action.targetSide, action.targetIdx);
       if (!card) return null;
-      const isAlly = G.enemy.field.includes(card);
+      // isAlly: 受信側から見て G.enemy（＝相手）のユニットかどうか
+      const isAlly = action.targetSide === 'player';
       return { type: 'unit', card, isAlly };
     }
     case 'shrine': {
-      const card = findByUid(action.targetUid);
+      const card = getCard(action.targetSide, action.targetIdx);
       return card ? { type: 'shrine', card } : null;
     }
     case 'multi': {
-      const targets = (action.targetUids || [])
-        .map(uid => { const card = findByUid(uid); return card ? { type: 'unit', card } : null; })
+      const targets = (action.targetIdxs || [])
+        .map(({ side, idx }) => {
+          const card = getCard(side, idx);
+          return card ? { type: 'unit', card } : null;
+        })
         .filter(Boolean);
       return { type: 'multi', targets };
     }
