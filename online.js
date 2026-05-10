@@ -213,6 +213,7 @@ function startOnlineGame(room) {
     selectedCard: null, phase: 'main', targetingMode: null,
     multiTargetStore: null, gameOver: false, aiThinking: false,
     discardMode: false, log: [],
+    mulliganRemain: 3, mulliganSelected: new Set(),
   };
 
   // 初期ドロー（3枚）
