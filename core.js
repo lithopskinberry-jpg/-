@@ -1,6 +1,16 @@
 // ===== core.js =====
 // ゲーム状態管理・デッキビルド・ゲーム進行・カードプレイ・戦闘・シジル
 
+// ===== UID生成ユーティリティ =====
+// crypto.randomUUID() を優先し、未対応環境ではフォールバック
+let _uidCounter = 0;
+function genUid() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `uid-${Date.now()}-${++_uidCounter}-${Math.floor(Math.random() * 1e9)}`;
+}
+
 // ===== STATE =====
 let selectedSigil = null;
 let playerDeck = [];
@@ -163,7 +173,7 @@ function renderCardPool() {
     addBtn.onclick = (e) => {
       e.stopPropagation();
       if (!canAddCard(card)) return;
-      playerDeck.push({...card, uid: Math.random()});
+      playerDeck.push({...card, uid: genUid()});
       renderCardPool();
       renderDeckList();
       updateDeckCount();
@@ -229,10 +239,10 @@ function autoDeck() {
   for (const card of shuffled) {
     if (playerDeck.length >= 30) break;
     if (canAddCard(card)) {
-      playerDeck.push({...card, uid: Math.random()});
+      playerDeck.push({...card, uid: genUid()});
       // 通常カードは2枚まで試みる
       if (!isLegend(card) && canAddCard(card)) {
-        playerDeck.push({...card, uid: Math.random()});
+        playerDeck.push({...card, uid: genUid()});
       }
     }
   }
@@ -244,7 +254,7 @@ function autoDeck() {
 
 // ===== GAME =====
 function makeDeck(cards) {
-  return [...cards].map(c => ({...c, uid: Math.random()})).sort(() => Math.random() - 0.5);
+  return [...cards].map(c => ({...c, uid: genUid()})).sort(() => Math.random() - 0.5);
 }
 
 function buildAIDeck() {
@@ -266,10 +276,10 @@ function buildAIDeck() {
   for (const c of pool) {
     if (deck.length >= 30) break;
     if (canAdd(c)) {
-      deck.push({...c, uid: Math.random()});
+      deck.push({...c, uid: genUid()});
       // 通常カードは2枚まで
       if (!(c.keyword && c.keyword.includes(LEGEND_KEYWORD)) && canAdd(c)) {
-        deck.push({...c, uid: Math.random()});
+        deck.push({...c, uid: genUid()});
       }
     }
   }
@@ -279,7 +289,7 @@ function buildAIDeck() {
 function createBoardCard(card) {
   return {
     ...card,
-    uid: Math.random(),
+    uid: genUid(),
     currentHp: card.hp,
     currentAtk: card.atk,
     sleeping: true, // summoning sickness
@@ -833,7 +843,7 @@ function executePlayCard(pl, handIdx, target) {
       return;
     }
 
-    const bc = {...card, uid: Math.random()};
+    const bc = {...card, uid: genUid()};
     pl.field.push(bc);
     addLog(`${isPlayer?'あなた':'AI'}が「${card.name}」を設置`, 'important');
     applyShrineEffect(pl, bc, card, isPlayer);
@@ -896,13 +906,13 @@ function executePlayCard(pl, handIdx, target) {
   checkHp(pl === G.player ? G.enemy : G.player);
   checkHp(pl);
 
-  // オンライン：自分のカードプレイを相手に送信
+  // オンライン：自分のカードプレイを相手に送信（UID統一）
   if (G.onlineMode && pl === G.player) {
     const actionObj = {
       type: 'play-card',
-      handIdx: handIdx, // 手札の何枚目か（受信側はG.enemy.hand[handIdx]で取得）
+      handCardUid: card.uid, // 手札カードのUID（cardはsplice前に取得済み）
     };
-    // ターゲット情報：uidではなくフィールドインデックスで送る
+    // ターゲット情報：uid基準で送る
     if (target) {
       if (target.type === 'face') {
         actionObj.targetType = 'face';
@@ -910,27 +920,15 @@ function executePlayCard(pl, handIdx, target) {
         actionObj.targetType = 'ally-face';
       } else if (target.type === 'unit' && target.card) {
         actionObj.targetType = 'unit';
-        // 自分フィールド（相手から見て敵）か、相手フィールド（自分から見て敵）か
-        const pIdx = G.player.field.indexOf(target.card);
-        const eIdx = G.enemy.field.indexOf(target.card);
-        if (pIdx !== -1) { actionObj.targetSide = 'player'; actionObj.targetIdx = pIdx; }
-        else if (eIdx !== -1) { actionObj.targetSide = 'enemy'; actionObj.targetIdx = eIdx; }
+        actionObj.targetUid = target.card.uid;
       } else if (target.type === 'shrine' && target.card) {
         actionObj.targetType = 'shrine';
-        const pIdx = G.player.field.indexOf(target.card);
-        const eIdx = G.enemy.field.indexOf(target.card);
-        if (pIdx !== -1) { actionObj.targetSide = 'player'; actionObj.targetIdx = pIdx; }
-        else if (eIdx !== -1) { actionObj.targetSide = 'enemy'; actionObj.targetIdx = eIdx; }
+        actionObj.targetUid = target.card.uid;
       } else if (target.type === 'multi' && target.targets) {
         actionObj.targetType = 'multi';
-        actionObj.targetIdxs = target.targets.map(t => {
-          if (!t.card) return null;
-          const pIdx = G.player.field.indexOf(t.card);
-          const eIdx = G.enemy.field.indexOf(t.card);
-          if (pIdx !== -1) return { side: 'player', idx: pIdx };
-          if (eIdx !== -1) return { side: 'enemy', idx: eIdx };
-          return null;
-        }).filter(Boolean);
+        actionObj.targetUids = target.targets
+          .map(t => t.card ? t.card.uid : null)
+          .filter(Boolean);
       }
     }
     sendAction(actionObj);
@@ -1323,7 +1321,7 @@ function applySpell(pl, card, target, isPlayer) {
         targetOwner.field = targetOwner.field.filter(c => c !== targetUnit);
         if (targetOwner.field.length < 5) {
           const chimera = {
-            id: 'tok_c78', uid: Math.random(), name: 'キメラ',
+            id: 'tok_c78', uid: genUid(), name: 'キメラ',
             type: 'ユニット', cost: x, atk: x, hp: x,
             currentAtk: x, currentHp: x, keyword: '', trigger: '', effect: '', aiRole: ''
           };
@@ -1427,7 +1425,7 @@ function applySpell(pl, card, target, isPlayer) {
         // 睡眠付与・攻撃済みフラグをセット
         stealTarget.sleeping = true;
         stealTarget.hasAttacked = true;
-        stealTarget.uid = Math.random(); // UIDを更新
+        // ※ uid は変更しない（相手側stateとの整合性維持のため）
         // 自分の場に追加＆リスナー再登録
         pl.field.push(stealTarget);
         onCardEnterField(pl, stealTarget);
@@ -1444,7 +1442,7 @@ function applySpell(pl, card, target, isPlayer) {
 
 function spawnToken(pl, tpl) {
   if (pl.field.length >= 5) return;
-  const bc = createBoardCard({...tpl, uid: Math.random()});
+  const bc = createBoardCard({...tpl, uid: genUid()});
   if (tpl.keyword && tpl.keyword.includes('速攻')) bc.sleeping = false;
   bc._owner = pl;
   pl.field.push(bc);
@@ -1528,7 +1526,7 @@ function triggerDeathrattle(unit, pl) {
     switch(unit.id) {
       case 'c3': drawCard(pl); addLog('死亡時ドロー', 'important'); break;
       case 'c9': spawnToken(pl, {...makeToken('1/1'), id:'tok_c9', name:'ミニスライム'}); addLog('ミニスライム召喚', 'important'); break;
-      case 'c16': pl.hand.push({...makeToken('1/2'), id:'tok_c16', name:'レヴナントの欠片', uid: Math.random()}); addLog('レヴナントの欠片を入手', 'important'); break;
+      case 'c16': pl.hand.push({...makeToken('1/2'), id:'tok_c16', name:'レヴナントの欠片', uid: genUid()}); addLog('レヴナントの欠片を入手', 'important'); break;
       case 'c43': spawnToken(pl, {...makeToken('4/4'), id:'tok_c43', name:'再誕の不死鳥'}); addLog('再誕の不死鳥召喚', 'important'); break;
     }
   }
@@ -1717,15 +1715,14 @@ function playerAttackTarget(target) {
   const defCard = target.type === 'unit' ? target.card : null;
   const attackerUid = attacker.uid;
 
-  // オンライン：攻撃を相手に送信（インデックスで送る）
+  // オンライン：攻撃を相手に送信（UIDs統一）
   if (G.onlineMode) {
-    const attackerIdx = G.player.field.indexOf(attacker);
     const actionObj = {
       type: 'attack',
-      attackerIdx: attackerIdx,
+      attackerUid: attacker.uid,
       targetType: target.type === 'face' ? 'face' : 'unit',
     };
-    if (defCard) actionObj.targetIdx = G.enemy.field.indexOf(defCard);
+    if (defCard) actionObj.targetUid = defCard.uid;
     sendAction(actionObj);
   }
 
@@ -1938,7 +1935,7 @@ function executeSigil(target) {
   cleanDeadUnits();
   checkHp(G.enemy);
 
-  // オンライン：シジル使用を相手に送信
+  // オンライン：シジル使用を相手に送信（UID統一）
   if (G.onlineMode) {
     const actionObj = {
       type: 'use-sigil',
@@ -1951,10 +1948,7 @@ function executeSigil(target) {
         actionObj.targetType = 'ally-face';
       } else if (target.card) {
         actionObj.targetType = 'unit';
-        const pIdx = G.player.field.indexOf(target.card);
-        const eIdx = G.enemy.field.indexOf(target.card);
-        if (pIdx !== -1) { actionObj.targetSide = 'player'; actionObj.targetIdx = pIdx; }
-        else if (eIdx !== -1) { actionObj.targetSide = 'enemy'; actionObj.targetIdx = eIdx; }
+        actionObj.targetUid = target.card.uid;
       }
     }
     sendAction(actionObj);

@@ -162,11 +162,11 @@ function startOnlineGame(room) {
   const opponentSigil = SIGIL_LIST.find(s => s.id === opponentData.heroId) || SIGIL_LIST[0];
   selectedSigil = mySigil;
 
-  // 相手デッキをカードオブジェクトに変換
+  // 相手デッキをカードオブジェクトに変換（UID生成はgenUidを使用）
   const opponentDeckCards = Online.opponentDeck
     .map(id => ALL_CARDS.find(c => c.id === id))
     .filter(Boolean)
-    .map(c => ({...c, uid: Math.random()}));
+    .map(c => ({...c, uid: genUid()}));
 
   // ===== G を構築 =====
   const makePl = (sigil, deckCards) => ({
@@ -296,9 +296,13 @@ function applyRemoteEndTurn() {
 
 // ===== リモート：カードプレイ =====
 function applyRemotePlayCard(action) {
-  const handIdx = action.handIdx;
-  if (handIdx === undefined || handIdx < 0 || handIdx >= G.enemy.hand.length) {
-    addLog(`[同期エラー] 相手の手札インデックス ${handIdx} が無効です`, 'damage');
+  // handCardUid（UID統一方式）で手札カードを特定
+  const handIdx = action.handCardUid
+    ? G.enemy.hand.findIndex(c => c.uid === action.handCardUid)
+    : G.enemy.hand.findIndex(c => c.id === action.cardId); // fallback（旧フォーマット互換）
+
+  if (handIdx === -1) {
+    addLog(`[同期エラー] 相手の手札にカードが見つかりません (uid:${action.handCardUid})`, 'damage');
     return;
   }
 
@@ -309,15 +313,14 @@ function applyRemotePlayCard(action) {
 
 // ===== リモート：攻撃 =====
 function applyRemoteAttack(action) {
-  const attacker = G.enemy.field[action.attackerIdx];
+  const attacker = G.enemy.field.find(c => c.uid === action.attackerUid);
   if (!attacker) { addLog('[同期エラー] 攻撃者が見つかりません', 'damage'); return; }
 
   let target = null;
   if (action.targetType === 'face') {
     target = { type: 'face' };
   } else if (action.targetType === 'unit') {
-    // 送信側: G.enemy.field[targetIdx] = 受信側: G.player.field[targetIdx]
-    const card = G.player.field[action.targetIdx];
+    const card = G.player.field.find(c => c.uid === action.targetUid);
     if (card) target = { type: 'unit', card };
   }
   if (!target) return;
@@ -378,18 +381,13 @@ function applyRemoteSigilEffect(pl, target, sigilId) {
   checkHp(G.player); checkHp(G.enemy);
 }
 
-// ===== ターゲット情報をインデックスから実オブジェクトに復元 =====
-// 視点の注意：送信側の G.player = 受信側の G.enemy、送信側の G.enemy = 受信側の G.player
+// ===== ターゲット情報を uid から実オブジェクトに復元 =====
 function resolveRemoteTarget(action) {
   if (!action.targetType) return null;
 
-  // side: 送信側（相手）視点での 'player'/'enemy'
-  // → 受信側では 'player' が G.enemy、'enemy' が G.player
-  const getCard = (side, idx) => {
-    if (side === 'player') return G.enemy.field[idx];   // 送信側のplayer = 受信側のenemy
-    if (side === 'enemy')  return G.player.field[idx];  // 送信側のenemy  = 受信側のplayer
-    return null;
-  };
+  const findByUid = (uid) =>
+    G.player.field.find(c => c.uid === uid) ||
+    G.enemy.field.find(c => c.uid === uid);
 
   switch (action.targetType) {
     case 'face':
@@ -397,22 +395,18 @@ function resolveRemoteTarget(action) {
     case 'ally-face':
       return { type: 'ally', isAlly: true };
     case 'unit': {
-      const card = getCard(action.targetSide, action.targetIdx);
+      const card = findByUid(action.targetUid);
       if (!card) return null;
-      // isAlly: 受信側から見て G.enemy（＝相手）のユニットかどうか
-      const isAlly = action.targetSide === 'player';
+      const isAlly = G.enemy.field.includes(card);
       return { type: 'unit', card, isAlly };
     }
     case 'shrine': {
-      const card = getCard(action.targetSide, action.targetIdx);
+      const card = findByUid(action.targetUid);
       return card ? { type: 'shrine', card } : null;
     }
     case 'multi': {
-      const targets = (action.targetIdxs || [])
-        .map(({ side, idx }) => {
-          const card = getCard(side, idx);
-          return card ? { type: 'unit', card } : null;
-        })
+      const targets = (action.targetUids || [])
+        .map(uid => { const card = findByUid(uid); return card ? { type: 'unit', card } : null; })
         .filter(Boolean);
       return { type: 'multi', targets };
     }
