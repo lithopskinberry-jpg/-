@@ -123,10 +123,11 @@ function onMatched() {
 // ===== デッキ・シジル確定 → DBに書き込み、相手の準備を待つ =====
 async function onlineReadyToStart(heroId) {
   if (!Online.roomId) return;
+  // デッキはカード順序・UIDごと送信（受信側と完全一致させるため）
   await db.ref(`rooms/${Online.roomId}/${Online.myRole}`).update({
     ready: true,
     heroId: heroId,
-    deck: playerDeck.map(c => c.id),
+    deck: playerDeck.map(c => ({ id: c.id, uid: c.uid })),
   });
   waitForBothReady();
 }
@@ -154,7 +155,7 @@ function startOnlineGame(room) {
   const opponentData = room[opponentRole];
 
   Online.opponentHeroId = opponentData.heroId;
-  Online.opponentDeck = opponentData.deck;
+  Online.opponentDeck = opponentData.deck; // [{id, uid}] 形式
   Online.isFirstPlayer = (Online.myRole === 'host'); // ホストが先攻
 
   // シジルを解決
@@ -162,11 +163,17 @@ function startOnlineGame(room) {
   const opponentSigil = SIGIL_LIST.find(s => s.id === opponentData.heroId) || SIGIL_LIST[0];
   selectedSigil = mySigil;
 
-  // 相手デッキをカードオブジェクトに変換（UID生成はgenUidを使用）
+  // 相手デッキをカードオブジェクトに変換（UIDは送信側のものをそのまま使用）
   const opponentDeckCards = Online.opponentDeck
-    .map(id => ALL_CARDS.find(c => c.id === id))
-    .filter(Boolean)
-    .map(c => ({...c, uid: genUid()}));
+    .map(entry => {
+      // 新形式: {id, uid} / 旧形式（文字列）にも対応
+      const cardId = typeof entry === 'string' ? entry : entry.id;
+      const cardUid = typeof entry === 'string' ? genUid() : entry.uid;
+      const base = ALL_CARDS.find(c => c.id === cardId);
+      if (!base) return null;
+      return {...base, uid: cardUid}; // 送信側UIDをそのまま使う
+    })
+    .filter(Boolean);
 
   // ===== G を構築 =====
   const makePl = (sigil, deckCards) => ({
@@ -181,6 +188,10 @@ function startOnlineGame(room) {
     attackListeners: [], hpZeroListeners: [],
   });
 
+  // 相手デッキは送信側UIDを保持したままシャッフルのみ（genUid再生成しない）
+  const makeEnemyDeck = (cards) =>
+    [...cards].sort(() => Math.random() - 0.5);
+
   G = {
     turn: 1,
     isPlayerTurn: Online.isFirstPlayer,
@@ -188,7 +199,17 @@ function startOnlineGame(room) {
     onlineMode: true,
     aiDifficulty: null, aiMemory: null, aiSkipCards: new Set(),
     player: makePl(mySigil, playerDeck),
-    enemy:  makePl(opponentSigil, opponentDeckCards),
+    enemy: {
+      hp: 25, maxHp: 25, mana: 0, maxMana: 0,
+      deck: makeEnemyDeck(opponentDeckCards),
+      hand: [], field: [],
+      sigil: {...opponentSigil},
+      sigilUseCount: 0, sigilMaxUse: 1, sigilDiscount: 0, deckOutCount: 0,
+      sotListeners: [], eotListeners: [], oppEotListeners: [], oppSotListeners: [],
+      oppSummonListeners: [], spellListeners: [], oppSpellListeners: [],
+      healListeners: [], damagedListeners: [], unitDamagedListeners: [],
+      attackListeners: [], hpZeroListeners: [],
+    },
     selectedCard: null, phase: 'main', targetingMode: null,
     multiTargetStore: null, gameOver: false, aiThinking: false,
     discardMode: false, log: [],

@@ -254,7 +254,8 @@ function autoDeck() {
 
 // ===== GAME =====
 function makeDeck(cards) {
-  return [...cards].map(c => ({...c, uid: genUid()})).sort(() => Math.random() - 0.5);
+  // UIDはdeckCards構築時点で確定済み。ここでは再生成しない
+  return [...cards].sort(() => Math.random() - 0.5);
 }
 
 function buildAIDeck() {
