@@ -1,30 +1,14 @@
 // ===== online.js =====
-// Authoritative Host Model
-//
-// 【Host】ゲーム状態の唯一の真実
-//   - 全シミュレーションをHostのみが実行
-//   - 自分の操作 → G適用 → Firebase gameState書き込み
-//   - Guestの操作 → actions受信 → G適用 → Firebase gameState書き込み
-//
-// 【Guest】操作の送信と表示のみ
-//   - 操作を actions に push するだけ
-//   - Firebase gameState を監視 → G に適用 → renderAll()
-//   - ローカルシミュレーション一切なし
-//
-// Firebase構造:
-//   rooms/{roomId}/
-//     host/guest  : デッキ・準備状態
-//     actions/    : Guestの操作キュー（Hostが処理・削除）
-//     gameState   : HostがシリアライズしたG（Guestが読む）
+// Firebase Realtime Database を使ったオンライン対戦管理
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAgq6dOapRkf9-NGL0V5Ib7X212I1P1VVE",
-  authDomain: "bouzumekuri-online.firebaseapp.com",
-  databaseURL: "https://bouzumekuri-online-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "bouzumekuri-online",
-  storageBucket: "bouzumekuri-online.firebasestorage.app",
-  messagingSenderId: "703927927532",
-  appId: "1:703927927532:web:af9c273d1064e9b5b4dbc9"
+    apiKey: "AIzaSyAgq6dOapRkf9-NGL0V5Ib7X212I1P1VVE",
+    authDomain: "bouzumekuri-online.firebaseapp.com",
+    databaseURL: "https://bouzumekuri-online-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "bouzumekuri-online",
+    storageBucket: "bouzumekuri-online.firebasestorage.app",
+    messagingSenderId: "703927927532",
+    appId: "1:703927927532:web:af9c273d1064e9b5b4dbc9"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -32,22 +16,15 @@ const db = firebase.database();
 
 const Online = {
   roomId: null,
-  myRole: null,        // 'host' | 'guest'
+  myRole: null,
   myName: null,
   opponentName: null,
+  opponentHeroId: null,
+  opponentDeck: [],
   isFirstPlayer: false,
+  isReady: false,
   listeners: [],
-  processingAction: false,
 };
-
-// ===== UID生成 =====
-let _uidCounter = 0;
-function genUid() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `uid-${Date.now()}-${++_uidCounter}-${Math.floor(Math.random() * 1e9)}`;
-}
 
 function generateRoomId() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -100,9 +77,9 @@ async function joinRoom() {
   const snapshot = await db.ref(`rooms/${roomId}`).once('value');
   const room = snapshot.val();
 
-  if (!room)                     { setLobbyStatus('ルームが見つかりません', 'var(--red)'); return; }
-  if (room.status !== 'waiting') { setLobbyStatus('このルームはすでに対戦中です', 'var(--red)'); return; }
-  if (room.guest)                { setLobbyStatus('ルームが満員です', 'var(--red)'); return; }
+  if (!room)                    { setLobbyStatus('ルームが見つかりません', 'var(--red)'); return; }
+  if (room.status !== 'waiting'){ setLobbyStatus('このルームはすでに対戦中です', 'var(--red)'); return; }
+  if (room.guest)               { setLobbyStatus('ルームが満員です', 'var(--red)'); return; }
 
   Online.roomId = roomId;
   Online.myRole = 'guest';
@@ -123,7 +100,7 @@ async function joinRoom() {
   onMatched();
 }
 
-// ===== ゲストを待つ（ホスト側）=====
+// ===== ゲストを待つ（ホスト側） =====
 function waitForGuest(roomId) {
   const ref = db.ref(`rooms/${roomId}/status`);
   const listener = ref.on('value', (snap) => {
@@ -137,13 +114,13 @@ function waitForGuest(roomId) {
   });
 }
 
-// ===== マッチング完了 =====
+// ===== マッチング完了 → デッキ構築画面へ =====
 function onMatched() {
   setLobbyStatus(`対戦相手: ${Online.opponentName}　デッキを構築してください`, 'var(--gold)');
   setTimeout(() => showScreen('deck'), 1200);
 }
 
-// ===== デッキ・シジル確定 =====
+// ===== デッキ・シジル確定 → DBに書き込み、相手の準備を待つ =====
 async function onlineReadyToStart(heroId) {
   if (!Online.roomId) return;
   await db.ref(`rooms/${Online.roomId}/${Online.myRole}`).update({
@@ -170,30 +147,31 @@ function waitForBothReady() {
   });
 }
 
-// ===== ゲーム開始 =====
+// ===== ゲーム状態構築 → マリガンへ =====
 function startOnlineGame(room) {
-  const opponentRole  = Online.myRole === 'host' ? 'guest' : 'host';
-  const myData        = room[Online.myRole];
-  const opponentData  = room[opponentRole];
+  const opponentRole = Online.myRole === 'host' ? 'guest' : 'host';
+  const myData = room[Online.myRole];
+  const opponentData = room[opponentRole];
 
-  Online.isFirstPlayer = (Online.myRole === 'host');
+  Online.opponentHeroId = opponentData.heroId;
+  Online.opponentDeck = opponentData.deck;
+  Online.isFirstPlayer = (Online.myRole === 'host'); // ホストが先攻
 
-  const mySigil       = SIGIL_LIST.find(s => s.id === myData.heroId)      || SIGIL_LIST[0];
+  // シジルを解決
+  const mySigil      = SIGIL_LIST.find(s => s.id === myData.heroId)      || SIGIL_LIST[0];
   const opponentSigil = SIGIL_LIST.find(s => s.id === opponentData.heroId) || SIGIL_LIST[0];
   selectedSigil = mySigil;
 
-  const buildDeck = (idList) =>
-    idList
-      .map(id => ALL_CARDS.find(c => c.id === id))
-      .filter(Boolean)
-      .map(c => ({...c, uid: genUid()}));
+  // 相手デッキをカードオブジェクトに変換
+  const opponentDeckCards = Online.opponentDeck
+    .map(id => ALL_CARDS.find(c => c.id === id))
+    .filter(Boolean)
+    .map(c => ({...c, uid: Math.random()}));
 
-  const myDeckCards  = buildDeck(myData.deck);
-  const oppDeckCards = buildDeck(opponentData.deck);
-
+  // ===== G を構築 =====
   const makePl = (sigil, deckCards) => ({
     hp: 25, maxHp: 25, mana: 0, maxMana: 0,
-    deck: [...deckCards].sort(() => Math.random() - 0.5),
+    deck: makeDeck(deckCards),
     hand: [], field: [],
     sigil: {...sigil},
     sigilUseCount: 0, sigilMaxUse: 1, sigilDiscount: 0, deckOutCount: 0,
@@ -209,37 +187,38 @@ function startOnlineGame(room) {
     playerFirst: Online.isFirstPlayer,
     onlineMode: true,
     aiDifficulty: null, aiMemory: null, aiSkipCards: new Set(),
-    player: makePl(mySigil, myDeckCards),
-    enemy:  makePl(opponentSigil, oppDeckCards),
+    player: makePl(mySigil, playerDeck),
+    enemy:  makePl(opponentSigil, opponentDeckCards),
     selectedCard: null, phase: 'main', targetingMode: null,
     multiTargetStore: null, gameOver: false, aiThinking: false,
     discardMode: false, log: [],
     mulliganRemain: 3, mulliganSelected: new Set(),
   };
 
+  // 初期ドロー（3枚）
   for (let i = 0; i < 3; i++) drawCard(G.player);
   for (let i = 0; i < 3; i++) drawCard(G.enemy);
 
-  if (Online.myRole === 'host') {
-    listenGuestActions();
-  } else {
-    listenGameState();
-  }
+  // 相手アクション受信リスナーを開始
+  listenOpponentActions();
 
+  // マリガンへ
   showScreen('game');
   showMulliganModal();
 }
 
-// ===== マリガン完了 =====
+// ===== マリガン完了（core.jsのendMulligan末尾から呼ぶ） =====
 async function onlineMulliganDone() {
   if (!Online.roomId) return;
 
   await db.ref(`rooms/${Online.roomId}/${Online.myRole}/mulliganDone`).set(true);
 
+  // UIを「待機中」にする
   const statusEl = document.getElementById('ctrl-status');
   if (statusEl) statusEl.textContent = '相手のマリガン待ち...';
   document.getElementById('btn-end-turn').disabled = true;
 
+  // 両者の mulliganDone を監視
   const ref = db.ref(`rooms/${Online.roomId}`);
   const listener = ref.on('value', (snap) => {
     const room = snap.val();
@@ -251,143 +230,90 @@ async function onlineMulliganDone() {
   });
 }
 
-// ===== 両者マリガン完了 =====
+// ===== 両者マリガン完了 → ゲーム本開始 =====
 function onBothMulliganDone() {
+  // 投了ボタンを表示（オンライン対戦中のみ）
   document.getElementById('btn-surrender').style.display = 'block';
   addLog('🌐 オンライン対戦開始！', 'system');
   addLog(`あなた: ${Online.myName}　相手: ${Online.opponentName}`, 'system');
   addLog(Online.isFirstPlayer ? 'あなたが先攻です' : '相手が先攻です', 'system');
-
-  if (Online.myRole === 'host') {
-    hostPushState();
-    startTurn();
-  }
-  // GuestはgameState更新を待つ
+  startTurn();
 }
 
-// ========================================================
-// ===== HOST SIDE =========================================
-// ========================================================
-
-function hostPushState() {
-  if (Online.myRole !== 'host' || !Online.roomId) return;
-  db.ref(`rooms/${Online.roomId}/gameState`).set(serializeG());
-}
-
-function serializeG() {
-  const serCard = (c) => ({
-    id: c.id, uid: c.uid, name: c.name,
-    type: c.type, cost: c.cost,
-    atk: c.atk,  hp: c.hp,
-    keyword: c.keyword || '', trigger: c.trigger || '', effect: c.effect || '',
-    currentAtk: c.currentAtk, currentHp: c.currentHp,
-    sleeping: c.sleeping, hasAttacked: c.hasAttacked,
-    shieldBroken: c.shieldBroken || false,
-    aiRole: c.aiRole || '',
+// ===== 自分の操作を送信 =====
+async function sendAction(actionObj) {
+  if (!Online.roomId) return;
+  await db.ref(`rooms/${Online.roomId}/actions`).push({
+    role: Online.myRole,
+    ...actionObj,
+    timestamp: firebase.database.ServerValue.TIMESTAMP,
   });
-
-  const serPl = (pl) => ({
-    hp: pl.hp, maxHp: pl.maxHp,
-    mana: pl.mana, maxMana: pl.maxMana,
-    deckOutCount: pl.deckOutCount || 0,
-    sigilUseCount: pl.sigilUseCount,
-    sigilMaxUse: pl.sigilMaxUse,
-    sigilDiscount: pl.sigilDiscount || 0,
-    sigil: pl.sigil,
-    deck:  pl.deck.map(serCard),
-    hand:  pl.hand.map(serCard),
-    field: pl.field.map(serCard),
-  });
-
-  return {
-    turn: G.turn,
-    isPlayerTurn: G.isPlayerTurn, // true = Hostのターン
-    playerFirst: G.playerFirst,
-    phase: G.phase,
-    gameOver: G.gameOver,
-    log: G.log.slice(-80),
-    hostPlayer: serPl(G.player),
-    hostEnemy:  serPl(G.enemy),
-  };
 }
 
-// GuestのアクションをHostのGに適用
-function listenGuestActions() {
+// ===== 相手の操作を受信 =====
+function listenOpponentActions() {
+  const opponentRole = Online.myRole === 'host' ? 'guest' : 'host';
   const ref = db.ref(`rooms/${Online.roomId}/actions`);
-  const listener = ref.on('child_added', (snap) => {
-    if (Online.processingAction) return;
-    const action = snap.val();
-    if (!action || action.role !== 'guest') return;
+  const startedAt = Date.now();
 
-    Online.processingAction = true;
-    applyGuestAction(action);
-    snap.ref.remove();
-    Online.processingAction = false;
+  const listener = ref.on('child_added', (snap) => {
+    const action = snap.val();
+    if (action.role !== opponentRole) return;
+    if (action.timestamp && action.timestamp < startedAt) return;
+    applyOpponentAction(action);
   });
   Online.listeners.push({ ref, listener, event: 'child_added' });
 }
 
-function applyGuestAction(action) {
+// ===== 受信アクションをゲームに反映 =====
+function applyOpponentAction(action) {
   if (G.gameOver) return;
-
   switch (action.type) {
-    case 'end-turn':  hostApplyEndTurn();            break;
-    case 'play-card': hostApplyPlayCard(action);      break;
-    case 'attack':    hostApplyAttack(action);        break;
-    case 'use-sigil': hostApplySigil(action);         break;
-    case 'game-over': onOpponentSurrender();           break;
-    default: console.warn('未知のGuestアクション:', action.type);
+    case 'end-turn':   applyRemoteEndTurn();        break;
+    case 'play-card':  applyRemotePlayCard(action);  break;
+    case 'attack':     applyRemoteAttack(action);    break;
+    case 'use-sigil':  applyRemoteSigil(action);     break;
+    case 'game-over':  onOpponentSurrender();         break;
+    default: console.warn('未知のアクション:', action.type);
   }
-
-  hostPushState();
-  if (!G.gameOver) renderAll();
 }
 
-function hostApplyEndTurn() {
+// ===== リモート：ターン終了 =====
+function applyRemoteEndTurn() {
+  if (G.gameOver) return;
   triggerEndOfTurn(G.enemy);
   triggerOppEndOfTurn(G.player);
   cleanDeadUnits();
   checkHp(G.player); checkHp(G.enemy);
-  if (G.gameOver) { hostPushState(); return; }
+  if (G.gameOver) return;
 
   G.selectedCard = null;
   G.phase = 'main';
   G.isPlayerTurn = true;
   G.turn++;
-  // startTurnはapplyGuestAction呼び出し後にhostPushState→renderAllが走る
-  // ただしstartTurnのドロー・マナ処理はここで実行
-  const pl = G.player; // Hostのターンへ
-  pl.maxMana = Math.min(10, pl.maxMana + 1);
-  pl.mana = pl.maxMana;
-  pl.sigilUseCount = 0;
-  const isFirstTurn = G.playerFirst && G.turn === 1;
-  if (!isFirstTurn) drawCard(pl);
-  pl.field.forEach(c => { c.hasAttacked = false; });
-  triggerStartOfTurn(pl);
-  triggerOppStartOfTurn(G.enemy);
-  addLog('--- あなたのターン ' + G.turn + ' ---', 'important');
-  document.getElementById('btn-end-turn').disabled = false;
+  renderAll();
+  startTurn();
 }
 
-// Guest視点のindexをHost視点に変換してカードプレイ
-// action: { handIdx, targetType?, targetSide?, targetIdx?, targetIdxs? }
-function hostApplyPlayCard(action) {
+// ===== リモート：カードプレイ =====
+function applyRemotePlayCard(action) {
+  // handIdx基準で手札を特定（送信側がindexを送る）
   const handIdx = action.handIdx;
-  if (handIdx == null || !G.enemy.hand[handIdx]) {
-    addLog(`[Host] Guestカードプレイ失敗: handIdx=${handIdx}`, 'damage');
+  if (handIdx == null || handIdx < 0 || handIdx >= G.enemy.hand.length) {
+    addLog(`[同期エラー] 相手の手札インデックスが無効 (handIdx:${handIdx})`, 'damage');
     return;
   }
-  const target = hostResolveTarget(action);
+
+  let target = resolveRemoteTarget(action);
   executePlayCard(G.enemy, handIdx, target);
+  renderAll();
 }
 
-// action: { attackerIdx, targetType, targetIdx? }
-function hostApplyAttack(action) {
+// ===== リモート：攻撃 =====
+function applyRemoteAttack(action) {
+  // attackerIdx基準で攻撃者を特定（送信側がindexを送る）
   const attacker = G.enemy.field[action.attackerIdx];
-  if (!attacker) {
-    addLog(`[Host] Guest攻撃解決失敗: attackerIdx=${action.attackerIdx}`, 'damage');
-    return;
-  }
+  if (!attacker) { addLog(`[同期エラー] 攻撃者が見つかりません (idx:${action.attackerIdx})`, 'damage'); return; }
 
   let target = null;
   if (action.targetType === 'face') {
@@ -398,211 +324,28 @@ function hostApplyAttack(action) {
   }
   if (!target) return;
 
-  executeAttack(G.enemy, attacker, G.player, target);
-  cleanDeadUnits();
-  checkHp(G.player); checkHp(G.enemy);
+  animAttack(attacker, false).then(() => {
+    executeAttack(G.enemy, attacker, G.player, target);
+    const dmg = target.type === 'unit'
+      ? [animDamage(target.card), animDamage(attacker)]
+      : [animFaceDamage(true)];
+    return Promise.all(dmg);
+  }).then(() => {
+    cleanDeadUnits();
+    checkHp(G.player); checkHp(G.enemy);
+    if (!G.gameOver) renderAll();
+  });
 }
 
-function hostApplySigil(action) {
-  const target = hostResolveTarget(action);
+// ===== リモート：シジル使用 =====
+function applyRemoteSigil(action) {
+  const target = resolveRemoteTarget(action);
   applyRemoteSigilEffect(G.enemy, target, action.sigilId);
-}
-
-// GuestはHostと逆視点なのでplayer↔enemyを反転して解決
-function hostResolveTarget(action) {
-  if (!action.targetType) return null;
-
-  // Host視点: Guestの「自分フィールド」= G.enemy、「相手フィールド」= G.player
-  const guestSelf = G.enemy.field;
-  const guestOpp  = G.player.field;
-
-  switch (action.targetType) {
-    case 'face':      return { type: 'face' };
-    case 'ally-face': return { type: 'ally', isAlly: true };
-    case 'unit': {
-      const side = action.targetSide === 'player' ? guestSelf : guestOpp;
-      const card = side[action.targetIdx];
-      if (!card) return null;
-      return { type: 'unit', card, isAlly: guestSelf.includes(card) };
-    }
-    case 'shrine': {
-      const side = action.targetSide === 'player' ? guestSelf : guestOpp;
-      const card = side[action.targetIdx];
-      return card ? { type: 'shrine', card } : null;
-    }
-    case 'multi': {
-      const targets = (action.targetIdxs || []).map(t => {
-        const side = t.side === 'player' ? guestSelf : guestOpp;
-        const card = side[t.idx];
-        return card ? { type: 'unit', card } : null;
-      }).filter(Boolean);
-      return { type: 'multi', targets };
-    }
-    default: return null;
-  }
-}
-
-// ========================================================
-// ===== GUEST SIDE ========================================
-// ========================================================
-
-function listenGameState() {
-  const ref = db.ref(`rooms/${Online.roomId}/gameState`);
-  const listener = ref.on('value', (snap) => {
-    const state = snap.val();
-    if (!state) return;
-    applyGameState(state);
-  });
-  Online.listeners.push({ ref, listener, event: 'value' });
-}
-
-// GuestのGをHostのgameStateで更新
-// Guest視点: 自分 = hostEnemy、相手 = hostPlayer
-function applyGameState(state) {
-  if (!G || !G.onlineMode) return;
-
-  const restoreCard = (data) => ({
-    id: data.id, uid: data.uid, name: data.name,
-    type: data.type, cost: data.cost,
-    atk: data.atk, hp: data.hp,
-    keyword: data.keyword || '', trigger: data.trigger || '', effect: data.effect || '',
-    currentAtk: data.currentAtk, currentHp: data.currentHp,
-    sleeping: data.sleeping, hasAttacked: data.hasAttacked,
-    shieldBroken: data.shieldBroken || false,
-    aiRole: data.aiRole || '',
-    tempBuffs: [],
-  });
-
-  const applyPl = (pl, data) => {
-    pl.hp            = data.hp;
-    pl.maxHp         = data.maxHp;
-    pl.mana          = data.mana;
-    pl.maxMana       = data.maxMana;
-    pl.deckOutCount  = data.deckOutCount || 0;
-    pl.sigilUseCount = data.sigilUseCount;
-    pl.sigilMaxUse   = data.sigilMaxUse;
-    pl.sigilDiscount = data.sigilDiscount || 0;
-    pl.sigil         = data.sigil;
-    pl.deck  = data.deck.map(restoreCard);
-    pl.hand  = data.hand.map(restoreCard);
-    pl.field = data.field.map(restoreCard);
-  };
-
-  // Guest視点では自分=hostEnemy、相手=hostPlayer
-  applyPl(G.player, state.hostEnemy);
-  applyPl(G.enemy,  state.hostPlayer);
-
-  const prevIsMyTurn = G.isPlayerTurn;
-
-  G.turn         = state.turn;
-  G.isPlayerTurn = !state.isPlayerTurn; // Hostのターンフラグを反転
-  G.playerFirst  = !state.playerFirst;
-  G.phase        = state.phase;
-  G.gameOver     = state.gameOver;
-
-  // ログ同期
-  if (state.log) {
-    G.log = state.log;
-    syncLogDisplay();
-  }
-
-  if (G.gameOver) {
-    // hostPlayerのhpが0 = Guestの勝ち / hostEnemyのhpが0 = Guestの負け
-    const guestWon = state.hostPlayer.hp <= 0;
-    showGameEnd(guestWon);
-    return;
-  }
-
-  const myTurnNow = G.isPlayerTurn;
-  document.getElementById('btn-end-turn').disabled = !myTurnNow;
-
-  // 自分のターンが来たらログに表示
-  if (myTurnNow && !prevIsMyTurn) {
-    addLog('--- あなたのターン ' + G.turn + ' ---', 'important');
-  } else if (!myTurnNow && prevIsMyTurn) {
-    addLog('--- 相手のターン ' + G.turn + ' ---', 'important');
-  }
-
   renderAll();
 }
 
-function syncLogDisplay() {
-  const logEl    = document.getElementById('game-log');
-  const drawerEl = document.getElementById('log-drawer-body');
-  if (!logEl && !drawerEl) return;
-  if (logEl)    logEl.innerHTML    = '';
-  if (drawerEl) drawerEl.innerHTML = '';
-  (G.log || []).forEach(entry => {
-    const div = document.createElement('div');
-    div.className = 'log-entry' + (entry.cls ? ` log-${entry.cls}` : '');
-    div.textContent = entry.text;
-    if (logEl)    logEl.appendChild(div.cloneNode(true));
-    if (drawerEl) drawerEl.appendChild(div);
-  });
-  if (logEl)    logEl.scrollTop    = logEl.scrollHeight;
-  if (drawerEl) drawerEl.scrollTop = drawerEl.scrollHeight;
-}
-
-// ========================================================
-// ===== sendAction（core.jsから呼ばれる共通インターフェース）
-// ========================================================
-// core.jsのexecutePlayCard・playerAttackTarget・executeSigilから呼ばれる
-// Hostは不要（自分のG適用後にhostPushStateを呼ぶだけ）
-// Guestはactionsにpush
-
-async function sendAction(actionObj) {
-  if (!Online.roomId) return;
-
-  if (Online.myRole === 'host') {
-    // Host自身の操作はcore.js側でG適用済み → pushするだけ
-    hostPushState();
-  } else {
-    // Guest: Firebaseに送信
-    await db.ref(`rooms/${Online.roomId}/actions`).push({
-      role: 'guest',
-      ...actionObj,
-    });
-  }
-}
-
-// ===== ターン終了（ui.jsまたはdcg.htmlのbtn-end-turnから呼ばれる）=====
-function playerEndTurnOnline() {
-  if (!G.isPlayerTurn || G.gameOver) return;
-
-  triggerEndOfTurn(G.player);
-  triggerOppEndOfTurn(G.enemy);
-  cleanDeadUnits();
-  checkHp(G.player); checkHp(G.enemy);
-  if (G.gameOver) {
-    if (Online.myRole === 'host') hostPushState();
-    return;
-  }
-
-  G.selectedCard = null;
-  G.phase = 'main';
-  G.isPlayerTurn = false;
-  G.turn++;
-
-  if (Online.myRole === 'host') {
-    // Hostターン終了: Guestのターン開始状態をpush → 待機
-    addLog('--- 相手のターン ' + G.turn + ' ---', 'important');
-    document.getElementById('btn-end-turn').disabled = true;
-    hostPushState();
-    renderAll();
-  } else {
-    // Guest: end-turnをHostに送信
-    db.ref(`rooms/${Online.roomId}/actions`).push({ role: 'guest', type: 'end-turn' });
-    document.getElementById('btn-end-turn').disabled = true;
-    renderAll();
-  }
-}
-
-// ========================================================
-// ===== 共通 ==============================================
-// ========================================================
-
 function applyRemoteSigilEffect(pl, target, sigilId) {
-  const opp = pl === G.player ? G.enemy : G.player;
+  const opp = G.player;
   const cost = Math.max(0, 2 - (pl.sigilDiscount || 0));
   pl.mana -= cost;
   pl.sigilUseCount++;
@@ -637,7 +380,45 @@ function applyRemoteSigilEffect(pl, target, sigilId) {
   checkHp(G.player); checkHp(G.enemy);
 }
 
-// ゲーム終了表示（playerWon: true=自分の勝ち）
+// ===== ターゲット情報を index から実オブジェクトに復元 =====
+// 送信側: player/enemyのフィールドindex + side('player'|'enemy') で送る
+// 受信側視点: 送信側の'player'フィールド = G.enemy、'enemy'フィールド = G.player
+function resolveRemoteTarget(action) {
+  if (!action.targetType) return null;
+
+  const senderSelf = G.enemy.field;  // 送信側の自分フィールド
+  const senderOpp  = G.player.field; // 送信側の相手フィールド
+
+  switch (action.targetType) {
+    case 'face':
+      return { type: 'face' };
+    case 'ally-face':
+      return { type: 'ally', isAlly: true };
+    case 'unit': {
+      const side = action.targetSide === 'player' ? senderSelf : senderOpp;
+      const card = side[action.targetIdx];
+      if (!card) return null;
+      const isAlly = senderSelf.includes(card);
+      return { type: 'unit', card, isAlly };
+    }
+    case 'shrine': {
+      const side = action.targetSide === 'player' ? senderSelf : senderOpp;
+      const card = side[action.targetIdx];
+      return card ? { type: 'shrine', card } : null;
+    }
+    case 'multi': {
+      const targets = (action.targetIdxs || []).map(t => {
+        const side = t.side === 'player' ? senderSelf : senderOpp;
+        const card = side[t.idx];
+        return card ? { type: 'unit', card } : null;
+      }).filter(Boolean);
+      return { type: 'multi', targets };
+    }
+    default: return null;
+  }
+}
+
+// ===== ゲーム終了表示 =====
 function showGameEnd(playerWon) {
   G.gameOver = true;
   cleanupOnline();
@@ -650,33 +431,29 @@ function showGameEnd(playerWon) {
   addLog(playerWon ? '勝利！' : '敗北...', 'important');
 }
 
+// ===== 相手が投了 =====
 function onOpponentSurrender() {
   addLog('相手が投了しました', 'system');
   showGameEnd(true);
 }
 
+// ===== 自分が投了 =====
 async function surrender() {
   if (!Online.roomId) return;
-  if (Online.myRole === 'host') {
-    G.gameOver = true;
-    hostPushState();
-    showGameEnd(false);
-  } else {
-    await db.ref(`rooms/${Online.roomId}/actions`).push({ role: 'guest', type: 'game-over' });
-    showGameEnd(false);
-  }
+  await sendAction({ type: 'game-over' });
+  showGameEnd(false);
 }
 
+// ===== 後片付け =====
 function cleanupOnline() {
   Online.listeners.forEach(({ ref, listener, event }) => ref.off(event, listener));
   Online.listeners = [];
-  if (Online.myRole === 'host' && Online.roomId) {
-    db.ref(`rooms/${Online.roomId}`).remove();
-  }
+  if (Online.myRole === 'host' && Online.roomId) db.ref(`rooms/${Online.roomId}`).remove();
+  // 投了ボタンを非表示に戻す
   const btn = document.getElementById('btn-surrender');
   if (btn) btn.style.display = 'none';
   Object.assign(Online, {
     roomId: null, myRole: null, myName: null, opponentName: null,
-    isFirstPlayer: false, isReady: false, processingAction: false,
+    opponentHeroId: null, opponentDeck: [], isFirstPlayer: false, isReady: false,
   });
 }
